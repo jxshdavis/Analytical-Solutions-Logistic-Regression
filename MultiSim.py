@@ -13,22 +13,19 @@ from timeit import default_timer as timer
 
 class Simulation:
 
-    def __init__(self, num_observations, num_regressors, num_levels):
+    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range):
         self._iterative_time = None
         self._analytical_time = None
         self._num_observations = num_observations
         self._num_regressors = num_regressors
         self._num_levels = num_levels
-
+        self._nudge = nudge
+        self._beta_range = beta_range
         # get the generated data
         self._generator, self._sim_data, self._sim_y = self.generate_data()
 
         # set the two models
-
         self._analytical_model = self.set_analytical_model()
-
-
-
         self._iterative_model = self.set_iterative_model()
 
         if num_regressors == 1:
@@ -38,7 +35,8 @@ class Simulation:
         # time the two models took to run
 
     def generate_data(self):
-        generator = DataGenerator.Generator(self._num_observations, self._num_regressors, self._num_levels)
+        generator = DataGenerator.Generator(self._num_observations, self._num_regressors, self._num_levels,
+                                            self._nudge, self._beta_range)
         sim_data_1 = generator.get_design_matrix()
         sim_y_1 = generator.get_response()
 
@@ -119,7 +117,6 @@ class Simulation:
                 ci = success_count[index]/(combo_counts[index]-success_count[index])
             params.append(np.log(ci) - params[0])
         return np.array(params)
-
 
     def get_simple_parameters(self):
         return self._simple_params

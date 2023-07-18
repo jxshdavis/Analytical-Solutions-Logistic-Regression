@@ -20,7 +20,7 @@ class AnalyticalSolution:
         df_encoded = df_encoded.astype(int)
         return df_encoded
 
-    def __init__(self, x, y=np.array([0])):
+    def __init__(self, x, nudge = 10**(-5), y=np.array([0])):
         self._x = x
         self._y = y
         self._x_tilde = None
@@ -29,7 +29,7 @@ class AnalyticalSolution:
         self.transform_design(self)
         self._w_combo_counts = None
         self._gamma = None
-
+        self._nudge = nudge
         self._success_counts = None
 
     def get_transformed(self):
@@ -66,6 +66,11 @@ class AnalyticalSolution:
         for num_cat in K:
             combinations = self.add_combos(combinations, num_cat)
         xt = pd.DataFrame(combinations, columns=df_encoded.columns)
+
+
+        
+
+
         xt.insert(0, 'intercept', 1)
         # print("transformed Design:")
         # print(xt)
@@ -76,31 +81,29 @@ class AnalyticalSolution:
         # perform 1-hot encoding
 
         df_encoded = self._encoded_x
+
         combinations = self._x_tilde.values.tolist()
         self._combinations = combinations
         combo_count = []
+
+        response = [x[0] for x in self._y.tolist()]
+        success_counts = []
         for combo in combinations:
             # Count the occurrences of the row
 
-            # row = tuple(list(combo)[1:])
-            row = tuple(list(combo))
-            combo_count.append((df_encoded.apply(tuple, axis=1) == row).sum())
-
-        self._w_combo_counts = combo_count
-        response = [x[0] for x in self._y.tolist()]
-
-        success_counts = []
-
-        for target_row in combinations:
-            target_row = target_row
+            target_row = combo[1:]
             inner = df_encoded.apply(lambda row: row.tolist() == target_row, axis=1)
             indices = df_encoded[inner].index
             success_count = 0
+            combo_count.append(len(indices))
             for index in indices:
                 if response[index] == 1:
                     success_count += 1
 
             success_counts.append(success_count)
+
+        self._w_combo_counts = combo_count
+
 
         self._success_counts = success_counts
         success_frequencies = []
@@ -110,7 +113,7 @@ class AnalyticalSolution:
             else:
                 success_frequencies.append(0)
         # print("success Freq")
-        E = 10 ** (-5)
+        E = self._nudge
 
         nudged = []
         for x in success_frequencies:
@@ -131,7 +134,6 @@ class AnalyticalSolution:
 
     def count_levels(self):
         data = np.array(copy.deepcopy(self._x))
-
         num_rows, num_cols = data.shape
 
         K = []

@@ -4,7 +4,7 @@ import AnalyticalSolution
 import numpy as np
 from scipy.stats import bernoulli
 from scipy.special import expit
-
+import copy
 
 class Generator:
     """
@@ -13,7 +13,7 @@ class Generator:
     generator.
     """
 
-    def __init__(self, num_observations, num_regressors, num_levels):
+    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range):
         """
         :param num_observations:
         :param num_regressors:
@@ -24,14 +24,13 @@ class Generator:
         self._num_regressors = num_regressors
         self._num_levels = num_levels
         self._design_matrix = self.gen_design_matrix()
-
+        self._nudge = nudge
+        self._beta_range = beta_range
         self._params = self.gen_model_params()
         # print(self._design_matrix)
         self._analytical_model = None
         self._encoded_x = self.transform_design()
         self._response = self.gen_response()
-
-
 
     def gen_model_params(self):
         """
@@ -49,7 +48,7 @@ class Generator:
         params = [0] * (total_unique_counts - self._num_regressors + 1)
 
         for index in range(len(params)):
-            params[index] = round(random.uniform(-5, 10), 2)
+            params[index] = round(random.uniform(self._beta_range[0], self._beta_range[1]), 2)
         return params
 
     def gen_design_matrix(self):
@@ -76,7 +75,7 @@ class Generator:
         return X
 
     def transform_design(self):
-        model = AnalyticalSolution.AnalyticalSolution(self.get_design_matrix())
+        model = AnalyticalSolution.AnalyticalSolution(self.get_design_matrix(), nudge = self._nudge)
 
         # save the analytical model so we do not have to re-encode x in the future!
         self._analytical_model = model
@@ -87,7 +86,7 @@ class Generator:
         :return: the response vector Y as a numpy array.
         """
         probabilities = []
-        X = self._encoded_x
+        X = copy.deepcopy(self._encoded_x)
         X.insert(0, 'intercept', 1)
         Beta = np.array(self._params)
         probabilities = expit(X.dot(Beta))

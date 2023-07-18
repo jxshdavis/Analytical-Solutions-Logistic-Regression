@@ -20,7 +20,9 @@ class ExperimentSimulations:
     If the number of regressors is 1, we fit and compare both of the proposed analytical solutions. Otherwise, we
     only perform the multi-regressor solution.
     """
-    def __init__(self, num_trials, num_regressors, num_levels, min_number_obs, max_number_obs, number_observations_sizes, logspace = True, use_mean = True):
+
+    def __init__(self, num_trials, num_regressors, num_levels, min_number_obs, max_number_obs,
+                 number_observations_sizes, nudge=10 ** (-5), beta_range=[-5, 10], logspace=True, use_mean=True):
         """
         :param num_trials: the number of simulations to run - the final plots will show the averages over all trials.
         :param num_regressors: the number of regressors the generated design matrix will have
@@ -38,13 +40,14 @@ class ExperimentSimulations:
         self._USE_MEAN = False
         self._num_regressors = num_regressors
         self._num_levels = num_levels
-        self._obs_counts = [int(x) for x in np.logspace(start=min_number_obs, stop=max_number_obs, num=number_observations_sizes)]
+        self._obs_counts = [int(x) for x in
+                            np.logspace(start=min_number_obs, stop=max_number_obs, num=number_observations_sizes)]
         self._num_trials = num_trials
-
+        self._nudge = nudge
         self._gamma_errors = []
         self._lib_lin_errors = []
         self._simple_errors = []
-
+        self._beta_range = beta_range
         self._analytical_times = []
         self._iterative_times = []
 
@@ -81,7 +84,8 @@ class ExperimentSimulations:
                 while True:
                     try:
                         sim1 = MultiSim.Simulation(num_observations=num_obs, num_regressors=num_regressors,
-                                                   num_levels=num_levels)
+                                                   num_levels=num_levels, nudge=self._nudge,
+                                                   beta_range=self._beta_range)
 
                         true, gamma, lib_lin_sol = sim1.get_parameters()
                         analytical_time, iterative_time = sim1.get_times()
@@ -174,16 +178,19 @@ class ExperimentSimulations:
         ax[0].set_yscale('log')  # Set y-axis to logarithmic scale
         # ax[0].set_ylim(0, 1.5 * max_value)  # Set y-axis limit to 130% of the maximum value
 
-
         if USE_MEAN:
-            title = "Average Error over " + str(num_trials) + " trials\nvs. Number of Observations"
+            title = "Average Error over " + str(num_trials) + " trials vs. Number of Observations"
         else:
-            title = "Median Error over " + str(num_trials) + " trials\nvs. Number of Observations"
+            title = "Median Error over " + str(num_trials) + " trials vs. Number of Observations"
 
-        ax[0].text(x=0.5, y=1.1, s=title, fontsize=12, weight='bold', ha='center', va='bottom', transform=ax[0].transAxes)
-        ax[0].text(x=0.5, y=1.05,
+        ax[0].text(x=0.5, y=1.1, s=title, fontsize=12, weight='bold', ha='center', va='bottom',
+                   transform=ax[0].transAxes)
+        ax[0].text(x=0.5, y=1.00,
                    s="Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
-                       num_levels) + " levels", fontsize=8, alpha=0.75, ha='center', va='bottom', transform=ax[0].transAxes)
+                       num_levels) + " levels.\nElements of the true" \
+                                     "beta are uniformly selected from the range [" + str(self._beta_range[0]) + ", " \
+                     + str(self._beta_range[1]) + "].", fontsize=8, alpha=0.75, ha='center',
+                   va='bottom', transform=ax[0].transAxes)
         ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=90)
         # Create an array to hold the boxplot data
         box_data_gamma = []
@@ -222,10 +229,10 @@ class ExperimentSimulations:
                     whiskerprops=dict(color=color1), capprops=dict(color=color1), medianprops=dict(color=color1),
                     flierprops=dict(markerfacecolor=color1, markeredgecolor=color1))
 
-        sns.boxplot(x='x', y='y', ax=ax[0], data=df_lib_lin_box, width=.2, color=color2, saturation=.5, boxprops=dict(alpha=.4),
+        sns.boxplot(x='x', y='y', ax=ax[0], data=df_lib_lin_box, width=.2, color=color2, saturation=.5,
+                    boxprops=dict(alpha=.4),
                     whiskerprops=dict(color=color2), capprops=dict(color=color2), medianprops=dict(color=color2),
                     flierprops=dict(markerfacecolor=color2, markeredgecolor=color2))
-
 
         if USE_MEAN:
             y_gam = np.mean(gamma_errors, axis=0)
@@ -239,7 +246,8 @@ class ExperimentSimulations:
         sns.lineplot(x=obs_counts_strings, y=y_gam, color=color1, label='Analytic', linewidth=2, ax=ax[0])
         sns.lineplot(x=obs_counts_strings, y=y_iter, color=color2, label='Standard Iterative', linewidth=2, ax=ax[0])
         if num_regressors == 1:
-            sns.lineplot(x=obs_counts_strings, y=y_simple, color=color3, label='Simple Analytic MLE', linewidth=2, ax=ax[0])
+            sns.lineplot(x=obs_counts_strings, y=y_simple, color=color3, label='Simple Analytic MLE', linewidth=2,
+                         ax=ax[0])
 
         ax[0].set_xlabel("Number of Observations")
         ax[0].set_ylabel("Average MSE (Predicted Beta vs Actual Beta)")
@@ -252,7 +260,6 @@ class ExperimentSimulations:
         # Take the difference, leaving 'x' column unchanged
         df_diff_analytic = df_gamma_box.copy()  # Create a copy of the 'df_gamma_box' DataFrame
         df_diff_analytic['y'] = df_gamma_box['y'].subtract(df_lib_lin_box['y'])
-
 
         if num_regressors == 1:
             df_diff_simple = df_simple_box.copy()
@@ -276,18 +283,22 @@ class ExperimentSimulations:
         ax[1].set_yscale('symlog')
 
         if USE_MEAN:
-            title2 = "Difference in Average Error over " + str(num_trials) + " trials\nvs. Number of Observations"
+            title2 = "Difference in Average Error over " + str(num_trials) + " trials vs. Number of Observations"
         else:
-            title2 = "Difference in Median Error over " + str(num_trials) + " trials\nvs. Number of Observations"
+            title2 = "Difference in Median Error over " + str(num_trials) + " trials vs. Number of Observations"
 
-        ax[1].text(x=1.95, y=1.1, s=title2, fontsize=12, weight='bold', ha='center', va='bottom', transform=ax[0].transAxes)
+        subtitle = "Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
+            num_levels) + " levels.\nWe compare the error of the analytic solution to the error of iterative " \
+                          "solution. Nudge parameter is set to " + str(self._nudge) + "."
+        ax[1].text(x=1.95, y=1.1, s=title2, fontsize=12, weight='bold', ha='center', va='bottom',
+                   transform=ax[0].transAxes)
         ax[1].text(x=1.95, y=1.03,
-                   s="Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
-                       num_levels) + " levels.\nWe compare the error of the analytic solution to the error of iterative solution.",
+                   s=subtitle,
                    fontsize=8, alpha=0.75, ha='center', va='bottom', transform=ax[0].transAxes)
 
         fig.tight_layout()  # Adjust plot layout to prevent overlapping
-        plot_name = "Sim_MSE_"+str(self._num_regressors)+"regressors_"+str(self._num_levels)+"levels_"+str(self._num_trials)+"trials.png"
+        plot_name = "Sim_MSE_" + str(self._num_regressors) + "regressors_" + str(self._num_levels) + "levels_" + str(
+            self._num_trials) + "trials.png"
         plt.savefig(plot_name, dpi=300)
 
         plt.close()
@@ -328,7 +339,8 @@ class ExperimentSimulations:
                     whiskerprops=dict(color=color2), capprops=dict(color=color2), medianprops=dict(color=color2),
                     flierprops=dict(markerfacecolor=color2, markeredgecolor=color2))
 
-        sns.lineplot(x=obs_counts_strings, y=np.mean(analytical_times, axis=0), color=color1, label='Analytic', linewidth=2,
+        sns.lineplot(x=obs_counts_strings, y=np.mean(analytical_times, axis=0), color=color1, label='Analytic',
+                     linewidth=2,
                      ax=ax_time)
         sns.lineplot(x=obs_counts_strings, y=np.mean(iterative_times, axis=0), color=color2, label='Standard Iterative',
                      linewidth=2, ax=ax_time)
@@ -345,12 +357,13 @@ class ExperimentSimulations:
         ax_time.text(x=0.5, y=1.1, s=title_time, fontsize=12, weight='bold', ha='center', va='bottom',
                      transform=ax_time.transAxes)
         ax_time.text(x=0.5, y=1.05,
-                     s="Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
-                         num_levels) + " levels", fontsize=8, alpha=0.75, ha='center', va='bottom', transform=ax_time.transAxes)
+                     s="Data Randomly Generated with " + str(
+                         num_regressors) + " categorical regressors each with " + str(
+                         num_levels) + " levels", fontsize=8, alpha=0.75, ha='center', va='bottom',
+                     transform=ax_time.transAxes)
         ax_time.set_yscale('log')
         fig_time.tight_layout()  # Adjust plot layout to prevent overlapping
-        plot_name = "Fitting_Times_" + str(self._num_regressors) + "regressors_" + str(self._num_levels) + "levels_" + str(
+        plot_name = "Fitting_Times_" + str(self._num_regressors) + "regressors_" + str(
+            self._num_levels) + "levels_" + str(
             self._num_trials) + "trials.png"
         plt.savefig(plot_name, dpi=300)  # Save the plot with higher DPI
-
-
