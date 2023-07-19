@@ -13,7 +13,7 @@ import ExperimentSimulations
 
 
 sim = ExperimentSimulations.ExperimentSimulations(num_trials = 3, num_regressors=3, num_levels=3, min_number_obs=2,
-                                                  max_number_obs=5, number_observations_sizes=5, beta_range=[-10,10])
+                                                  max_number_obs=6, number_observations_sizes=3, beta_range=[-10,10])
 sim.plot_errors()
 sim.plot_times()
 

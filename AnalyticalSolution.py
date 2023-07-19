@@ -25,12 +25,14 @@ class AnalyticalSolution:
         self._y = y
         self._x_tilde = None
         self._z = None
+        self._level_counts = None
         self._encoded_x = self.encode_df()
         self.transform_design(self)
         self._w_combo_counts = None
         self._gamma = None
         self._nudge = nudge
         self._success_counts = None
+
 
     def get_transformed(self):
         return self._z, self._x_tilde
@@ -68,7 +70,7 @@ class AnalyticalSolution:
         xt = pd.DataFrame(combinations, columns=df_encoded.columns)
 
 
-        
+
 
 
         xt.insert(0, 'intercept', 1)
@@ -84,9 +86,42 @@ class AnalyticalSolution:
 
         combinations = self._x_tilde.values.tolist()
         self._combinations = combinations
-        combo_count = []
 
         response = [x[0] for x in self._y.tolist()]
+
+
+        # start with row in df
+
+        num_reg = self._x.shape[1]
+
+        # num_combo = len(combinations)
+        # combo_count = [0] * num_combo
+        # success_counts = [0] * num_combo
+        #
+        # levels = self._level_counts
+        # for index, row in df_encoded.iterrows():
+        #     sub_row_start_idx = 0
+        #     row = row.tolist()
+        #     tilde_idx = 0
+        #
+        #     for i in range(num_reg):
+        #         Ki = levels[i]
+        #         sub_row = row[sub_row_start_idx:sub_row_start_idx + Ki-1]
+        #
+        #         one_index = sub_row.index(1) if 1 in sub_row else -1
+        #
+        #         if one_index >= 1:
+        #             tilde_idx += (Ki-one_index-1)*Ki**(i)
+        #         elif one_index ==-1:
+        #             tilde_idx += (Ki-1)*Ki**(i)
+        #
+        #         # update the information to get next subrow
+        #         sub_row_start_idx = sub_row_start_idx + Ki - 1
+        #
+        #     combo_count[tilde_idx] += 1
+        #     success_counts[tilde_idx] += response[index]
+
+        combo_count = []
         success_counts = []
         for combo in combinations:
             # Count the occurrences of the row
@@ -140,6 +175,7 @@ class AnalyticalSolution:
         # obtain the K_js
         for col in range(0, num_cols):
             K.append(len(set(data[:, col].flatten())))
+        self._level_counts = K
         return K
 
     def get_encoded_x(self):
@@ -169,3 +205,4 @@ class AnalyticalSolution:
 
     def set_y(self, y):
         self._y = y
+
