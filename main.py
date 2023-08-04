@@ -11,21 +11,34 @@ from numpy.linalg import inv
 import AnalyticalSolution
 import ExperimentSimulations
 
-
-sim = ExperimentSimulations.ExperimentSimulations(num_trials = 3, num_regressors=3, num_levels=3, min_number_obs=2,
-                                                  max_number_obs=6, number_observations_sizes=3, beta_range=[-10,10])
-sim.plot_errors()
-sim.plot_times()
+import seaborn as sns
 
 
+
+
+
+
+#
+# min_x = np.log(2)/np.log(10)
+# max_x = np.log(8)/np.log(10)
+
+min_x = 2
+max_x = 5
+
+
+
+for num_reg in [16]:
+    sim = ExperimentSimulations.ExperimentSimulations(num_trials = 100, num_regressors=num_reg, num_levels=2, num_obs=10**3, log_min_x=min_x,
+                                                      log_max_x=max_x, number_x_ticks=4, beta_range=[-5,10], lamb = 0)223
+    sim.run_sim("observations")
 
 
 
 
 # For real data, first we want to discretize the numeric covariates
-
+#
 # # Load the dataset
-# df = pd.read_csv('/Users/joshdavis/Desktop/Meng Research/Analytical-Solutions-Logistic-Regression/datasets/cancer-data.csv')
+# df = pd.read_csv('/Users/joshdavis/Desktop/Meng Research/Analytical-Solutions-Logistic-Regression/datsets/cancer-data.csv')
 # y = df['diagnosis']
 #
 # number_cols = 6
@@ -35,7 +48,7 @@ sim.plot_times()
 #
 #
 # tf = copy.deepcopy(df)
-# num_levels = 2
+# num_levels = 7
 # numerical_columns = tf.select_dtypes(include=['int', 'float']).columns.tolist()
 #
 # # discretize

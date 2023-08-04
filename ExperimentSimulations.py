@@ -1,5 +1,5 @@
 import seaborn as sns
-import MultiSim
+import Simulation
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -21,8 +21,8 @@ class ExperimentSimulations:
     only perform the multi-regressor solution.
     """
 
-    def __init__(self, num_trials, num_regressors, num_levels, min_number_obs, max_number_obs,
-                 number_observations_sizes, nudge=10 ** (-5), beta_range=[-5, 10], logspace=True, use_mean=True):
+    def __init__(self, num_trials, num_regressors, num_levels, log_min_x, log_max_x,
+                 number_x_ticks, num_obs = 10**3, nudge=10 ** (-5), beta_range=[-5, 10], lamb = 0, logspace=True, use_mean=True):
         """
         :param num_trials: the number of simulations to run - the final plots will show the averages over all trials.
         :param num_regressors: the number of regressors the generated design matrix will have
@@ -40,36 +40,49 @@ class ExperimentSimulations:
         self._USE_MEAN = False
         self._num_regressors = num_regressors
         self._num_levels = num_levels
-        self._obs_counts = [int(x) for x in
-                            np.logspace(start=min_number_obs, stop=max_number_obs, num=number_observations_sizes)]
+        self._num_obs = num_obs
+        self._x_ax_counts = [int(x) for x in
+                            np.logspace(start=log_min_x, stop=log_max_x, num=number_x_ticks)]
+
+
+
         self._num_trials = num_trials
         self._nudge = nudge
         self._gamma_errors = []
         self._lib_lin_errors = []
         self._simple_errors = []
         self._beta_range = beta_range
-        self._analytical_times = []
+        self._analytical_transform_times = []
+        self._analytical_fit_times = []
         self._iterative_times = []
+        self._lambda = lamb
 
         self._color1 = "red"
         self._color2 = "green"
         self._color3 = "blue"
 
         self._x_boxplot = None
-        self._obs_counts_strings = None
+        self._x_ax_counts_strings = None
 
-        # run the simulation
-        self.run_sim()
 
-    def run_sim(self):
+
+
+    def run_observation_sim(self):
+        self.run_sim(self, "observations")
+
+
+    def run_sim(self, independent_var):
         """
         Runs the actual simulation. Saves the errors from each trial as well as fitting times.
         :return: None
         """
+
+
         num_trials = self._num_trials
-        obs_counts = self._obs_counts
+        x_ax_counts = self._x_ax_counts
         num_levels = self._num_levels
         num_regressors = self._num_regressors
+        num_obs = self._num_obs
         USE_MEAN = self._USE_MEAN
         for trial in range(num_trials):
             print(str(round((trial + 1) / num_trials * 100, 3)) + " percent finished.")
@@ -77,18 +90,28 @@ class ExperimentSimulations:
             trial_lib_lin_error = []
             trial_simple_error = []
 
-            trial_analytical_time = []
+            trial_analytical_transform_time = []
+            trial_analytical_fit_time = []
             trial_iterative_time = []
 
-            for num_obs in obs_counts:
+            for count in x_ax_counts:
+
+                if independent_var == "observations":
+                    num_obs = count
+                elif independent_var == "regressors":
+                    num_regressors = count
+                elif independent_var == "levels":
+                    num_levels = count
+
                 while True:
                     try:
-                        sim1 = MultiSim.Simulation(num_observations=num_obs, num_regressors=num_regressors,
+                        sim1 = Simulation.Simulation(num_observations=num_obs, num_regressors=num_regressors,
                                                    num_levels=num_levels, nudge=self._nudge,
-                                                   beta_range=self._beta_range)
+                                                   beta_range=self._beta_range,
+                                                     lamb=self._lambda)
 
                         true, gamma, lib_lin_sol = sim1.get_parameters()
-                        analytical_time, iterative_time = sim1.get_times()
+                        analytical_transform_time, analytical_fit_time, iterative_time = sim1.get_times()
                         if num_regressors == 1:
                             simple_params = sim1.get_simple_parameters()
 
@@ -105,7 +128,8 @@ class ExperimentSimulations:
                                 trial_simple_error.append(np.median((true - simple_params) ** 2, axis=0))
 
                         # save experiment error
-                        trial_analytical_time.append(analytical_time)
+                        trial_analytical_transform_time.append(analytical_transform_time)
+                        trial_analytical_fit_time.append(analytical_fit_time)
                         trial_iterative_time.append(iterative_time)
 
                         break  # If no error occurred, exit the loop and move to the next iteration
@@ -118,7 +142,8 @@ class ExperimentSimulations:
             self._lib_lin_errors.append(trial_lib_lin_error)
             self._simple_errors.append(trial_simple_error)
 
-            self._analytical_times.append(trial_analytical_time)
+            self._analytical_transform_times.append(trial_analytical_transform_time)
+            self._analytical_fit_times.append(trial_analytical_fit_time)
             self._iterative_times.append(trial_iterative_time)
 
         # convert errors and times to numpy arrays for plotting
@@ -126,18 +151,24 @@ class ExperimentSimulations:
         self._lib_lin_errors = np.array(self._lib_lin_errors)
         self._simple_errors = np.array(self._simple_errors)
 
-        self._analytical_times = np.array(self._analytical_times)
+        self._analytical_transform_times = np.array(self._analytical_transform_times)
+        self._analytical_fit_times = np.array(self._analytical_fit_times)
         self._iterative_times = np.array(self._iterative_times)
 
-    def plot_errors(self):
+        self.plot_errors(independent_var)
+        self.plot_times(independent_var)
+
+
+    def plot_errors(self, independent_var):
         """
         Saves the plot displaying information on errors obtained from the simulation.
         :return: None
         """
         num_trials = self._num_trials
-        obs_counts = self._obs_counts
+        x_ax_counts = self._x_ax_counts
         num_levels = self._num_levels
         num_regressors = self._num_regressors
+        num_obs = self._num_obs
         USE_MEAN = self._USE_MEAN
         gamma_errors = self._gamma_errors
         lib_lin_errors = self._lib_lin_errors
@@ -179,9 +210,9 @@ class ExperimentSimulations:
         # ax[0].set_ylim(0, 1.5 * max_value)  # Set y-axis limit to 130% of the maximum value
 
         if USE_MEAN:
-            title = "Average Error over " + str(num_trials) + " trials vs. Number of Observations"
+            title = "Average Error over " + str(num_trials) + " trials vs. Number of "+str(independent_var)
         else:
-            title = "Median Error over " + str(num_trials) + " trials vs. Number of Observations"
+            title = "Median Error over " + str(num_trials) + " trials vs. Number of "+str(independent_var)
 
         ax[0].text(x=0.5, y=1.1, s=title, fontsize=12, weight='bold', ha='center', va='bottom',
                    transform=ax[0].transAxes)
@@ -196,7 +227,7 @@ class ExperimentSimulations:
         box_data_gamma = []
         box_data_lib_lin = []
 
-        for i, obs_count in enumerate(obs_counts):
+        for i, obs_count in enumerate(x_ax_counts):
             # Repeat the gamma_errors and lib_lin_errors values for each boxplot
             box_data_gamma.extend(gamma_errors[:, i])
             box_data_lib_lin.extend(lib_lin_errors[:, i])
@@ -204,10 +235,10 @@ class ExperimentSimulations:
         # Plot the boxplots
 
         x_boxplot = []
-        obs_counts_strings = [str("{:.1e}".format(x)) for x in obs_counts]
-        self._obs_counts_strings = obs_counts_strings
-        for num_obs in obs_counts_strings:
-            x_boxplot += [num_obs] * num_trials
+        x_ax_counts_strings = [str("{:.1e}".format(x)) for x in x_ax_counts]
+        self._x_ax_counts_strings = x_ax_counts_strings
+        for count in x_ax_counts_strings:
+            x_boxplot += [count] * num_trials
 
         self._x_boxplot = x_boxplot
         y_boxplot_gamma = gamma_errors.T.flatten().tolist()
@@ -243,13 +274,13 @@ class ExperimentSimulations:
             y_iter = np.median(lib_lin_errors, axis=0)
             y_simple = np.median(simple_errors, axis=0)
 
-        sns.lineplot(x=obs_counts_strings, y=y_gam, color=color1, label='Analytic', linewidth=2, ax=ax[0])
-        sns.lineplot(x=obs_counts_strings, y=y_iter, color=color2, label='Standard Iterative', linewidth=2, ax=ax[0])
+        sns.lineplot(x=x_ax_counts_strings, y=y_gam, color=color1, label='Analytic', linewidth=2, ax=ax[0])
+        sns.lineplot(x=x_ax_counts_strings, y=y_iter, color=color2, label='Standard Iterative', linewidth=2, ax=ax[0])
         if num_regressors == 1:
-            sns.lineplot(x=obs_counts_strings, y=y_simple, color=color3, label='Simple Analytic MLE', linewidth=2,
+            sns.lineplot(x=x_ax_counts_strings, y=y_simple, color=color3, label='Simple Analytic MLE', linewidth=2,
                          ax=ax[0])
 
-        ax[0].set_xlabel("Number of Observations")
+        ax[0].set_xlabel("Number of "+str(independent_var))
         ax[0].set_ylabel("Average MSE (Predicted Beta vs Actual Beta)")
 
         h, l = ax[0].get_legend_handles_labels()
@@ -273,7 +304,7 @@ class ExperimentSimulations:
                     flierprops=dict(markerfacecolor=color1, markeredgecolor=color1))
 
         ax[1].axhline(y=0, linestyle='--', color="black")
-        ax[1].set_xlabel("Number of Observations")
+        ax[1].set_xlabel("Number of "+str(independent_var))
 
         y_lab = "Difference in Average MSE (Predicted Beta vs Actual Beta)"
         if not USE_MEAN:
@@ -283,13 +314,27 @@ class ExperimentSimulations:
         ax[1].set_yscale('symlog')
 
         if USE_MEAN:
-            title2 = "Difference in Average Error over " + str(num_trials) + " trials vs. Number of Observations"
+            title2 = "Difference in Average Error over " + str(num_trials) + " trials vs. Number of "+str(independent_var)
         else:
-            title2 = "Difference in Median Error over " + str(num_trials) + " trials vs. Number of Observations"
+            title2 = "Difference in Median Error over " + str(num_trials) + " trials vs. Number of "+str(independent_var)
 
-        subtitle = "Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
-            num_levels) + " levels.\nWe compare the error of the analytic solution to the error of iterative " \
-                          "solution. Nudge parameter is set to " + str(self._nudge) + "."
+        if independent_var == "observations":
+            subtitle = "Data Randomly Generated with " + str(
+                num_regressors) + " categorical regressors each with " + str(
+                num_levels) + " levels.\nWe compare the error of the analytic solution to the error of iterative " \
+                              "solution. Nudge parameter is set to " + str(self._nudge) + "."
+        elif independent_var == "regressors":
+            subtitle = "Data Randomly Generated: " + str(
+                num_obs) + " observations each regressor with " + str(
+                num_levels) + " levels.\nWe compare the error of the analytic solution to the error of iterative " \
+                              "solution. Nudge parameter is set to " + str(self._nudge) + "."
+        elif independent_var == "levels":
+            subtitle = "Data Randomly Generated: " + str(
+                num_obs) + " observations and  " + str(
+                num_regressors) + " regressors.\nWe compare the error of the analytic solution to the error of iterative " \
+                              "solution. Nudge parameter is set to " + str(self._nudge) + "."
+
+
         ax[1].text(x=1.95, y=1.1, s=title2, fontsize=12, weight='bold', ha='center', va='bottom',
                    transform=ax[0].transAxes)
         ax[1].text(x=1.95, y=1.03,
@@ -303,7 +348,7 @@ class ExperimentSimulations:
 
         plt.close()
 
-    def plot_times(self):
+    def plot_times(self, independent_var):
         """
         Saves the plot displaying information on times obtained from the simulation.
         :return: None
@@ -317,13 +362,21 @@ class ExperimentSimulations:
         num_trials = self._num_trials
         num_regressors = self._num_regressors
         num_levels = self._num_levels
-        obs_counts_strings = self._obs_counts_strings
-        analytical_times = self._analytical_times
+        x_ax_counts_strings = self._x_ax_counts_strings
+        analytical_transform_times = self._analytical_transform_times
+        analytical_fit_times = self._analytical_fit_times
+
+        analytical_times = analytical_transform_times + analytical_fit_times
         iterative_times = self._iterative_times
+
+
+
 
         fig_time, ax_time = plt.subplots(figsize=(7, 5))
 
+        # add the transform times to the fit times for the analytical box plot
         y_boxplot_analytical_time = np.array(analytical_times).T.flatten().tolist()
+
         y_boxplot_iterative_time = np.array(iterative_times).T.flatten().tolist()
 
         df_a_times_box = pd.DataFrame({"x": np.array(x_boxplot), "y": np.array(y_boxplot_analytical_time)})
@@ -339,20 +392,29 @@ class ExperimentSimulations:
                     whiskerprops=dict(color=color2), capprops=dict(color=color2), medianprops=dict(color=color2),
                     flierprops=dict(markerfacecolor=color2, markeredgecolor=color2))
 
-        sns.lineplot(x=obs_counts_strings, y=np.mean(analytical_times, axis=0), color=color1, label='Analytic',
+
+        sns.lineplot(x=x_ax_counts_strings, y=np.mean(analytical_times, axis=0), color=color1, label='Analytic',
                      linewidth=2,
                      ax=ax_time)
-        sns.lineplot(x=obs_counts_strings, y=np.mean(iterative_times, axis=0), color=color2, label='Standard Iterative',
+        sns.lineplot(x=x_ax_counts_strings, y=np.mean(iterative_times, axis=0), color=color2, label='Standard Iterative',
                      linewidth=2, ax=ax_time)
 
-        ax_time.set_xlabel("Number of Observations")
+
+        stacked_times = {"x": x_ax_counts_strings, "transform times": np.mean(analytical_transform_times, axis=0), "fit times": np.mean(analytical_fit_times, axis=0)}
+        stacked_times = pd.DataFrame(stacked_times)
+
+        stacked_times.set_index('x').plot(kind='bar', stacked=True, color=['orange', 'blue'], ax=ax_time, alpha=.1 )
+
+
+
+        ax_time.set_xlabel("Number of "+str(independent_var))
         ax_time.set_ylabel("Average Time Spent Fitting Model")
 
         h, l = ax_time.get_legend_handles_labels()
 
         ax_time.legend(h[:4], l[:4], bbox_to_anchor=(1.05, 1), loc=2)
 
-        title_time = "Average Time to Fit Models over " + str(num_trials) + " trials\nvs. Number of Observations"
+        title_time = "Average Time to Fit Models over " + str(num_trials) + " trials\nvs. Number of "+str(independent_var)
 
         ax_time.text(x=0.5, y=1.1, s=title_time, fontsize=12, weight='bold', ha='center', va='bottom',
                      transform=ax_time.transAxes)

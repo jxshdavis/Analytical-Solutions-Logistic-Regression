@@ -9,6 +9,7 @@ import pandas as pd
 from numpy.linalg import inv
 
 
+
 class AnalyticalSolution:
     """
     Generates the analytical solution when there are multiple regressors.
@@ -20,10 +21,12 @@ class AnalyticalSolution:
         df_encoded = df_encoded.astype(int)
         return df_encoded
 
-    def __init__(self, x, nudge = 10**(-5), y=np.array([0])):
+    def __init__(self, x, lamb = 0, nudge = 10**(-5), y=np.array([0])):
         self._x = x
         self._y = y
+        self._lambda = lamb
         self._x_tilde = None
+        self._invert_this = None
         self._z = None
         self._level_counts = None
         self._encoded_x = self.encode_df()
@@ -32,6 +35,10 @@ class AnalyticalSolution:
         self._gamma = None
         self._nudge = nudge
         self._success_counts = None
+
+
+    def set_lambda(self, lamb):
+        self._lambda = lamb
 
 
     def get_transformed(self):
@@ -69,10 +76,6 @@ class AnalyticalSolution:
             combinations = self.add_combos(combinations, num_cat)
         xt = pd.DataFrame(combinations, columns=df_encoded.columns)
 
-
-
-
-
         xt.insert(0, 'intercept', 1)
         # print("transformed Design:")
         # print(xt)
@@ -91,51 +94,105 @@ class AnalyticalSolution:
 
 
         # start with row in df
+        # method 1: faster with high number of regressors and levels
 
         num_reg = self._x.shape[1]
 
+        num_combo = len(combinations)
+        combo_count = [0] * num_combo
+        num_reg = self._x.shape[1]
+
+        num_combo = len(combinations)
+        combo_count = [0] * num_combo
+        success_counts = [0] * num_combo
+
+        levels = self._level_counts
+
+        # We can also consturct the (X_tilde^T W X_tilde) matrix here
+        mat_size = 1-len(levels)+sum(levels)
+        print()
+
+        invert_this = np.zeros((mat_size,mat_size))
+
+        for index, row in df_encoded.iterrows():
+            one_indicies = []
+            sub_row_start_idx = 0
+            row = row.tolist()
+            tilde_idx = 0
+
+            for i in range(num_reg):
+                Ki = levels[i]
+                sub_row = row[sub_row_start_idx:sub_row_start_idx + Ki-1]
+
+                one_index = sub_row.index(1) if 1 in sub_row else -1
+
+                if one_index !=-1:
+                    one_indicies.append(one_index+sub_row_start_idx)
+
+                if one_index >= 1:
+                    tilde_idx += (Ki-one_index-1)*Ki**(i)
+                elif one_index ==-1:
+                    tilde_idx += (Ki-1)*Ki**(i)
+
+                # update the information to get next subrow
+                sub_row_start_idx = sub_row_start_idx + Ki - 1
+
+            # update the invert_this matrix: \tilde X^T W \tilde X
+            invert_this[0, 0] += 1
+            for row in one_indicies:
+                invert_this[0, row+1] += 1
+                invert_this[row+1, 0] += 1
+                invert_this[row+1, row+1] += 1
+                for col in one_indicies:
+                    # col0 and row0
+                    if row != col:
+                        invert_this[row+1, col+1] += 1
+
+
+            self._invert_this = invert_this
+
+            # update the counts of each row of the data
+            combo_count[tilde_idx] += 1
+
+            # update the success counts of the row of data
+            success_counts[tilde_idx] += response[index]
+
+
+
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        # # # method 2: pretty slow
+        #
+        # combo_count = []
+        # success_counts = []
+        # for combo in combinations:
+        #     # Count the occurrences of the row
+        #
+        #     target_row = combo[1:]
+        #     inner = df_encoded.apply(lambda row: row.tolist() == target_row, axis=1)
+        #     indices = df_encoded[inner].index
+        #     success_count = 0
+        #     combo_count.append(len(indices))
+        #     for index in indices:
+        #         if response[index] == 1:
+        #             success_count += 1
+        #
+        #     success_counts.append(success_count)
+
+        # # method 3: dictionary index lookup
         # num_combo = len(combinations)
         # combo_count = [0] * num_combo
         # success_counts = [0] * num_combo
         #
-        # levels = self._level_counts
+        # index_dict = {}
+        # for index, combo in enumerate(combinations):
+        #     index_dict[tuple(combo[1:])] = index
+        #
         # for index, row in df_encoded.iterrows():
-        #     sub_row_start_idx = 0
-        #     row = row.tolist()
-        #     tilde_idx = 0
-        #
-        #     for i in range(num_reg):
-        #         Ki = levels[i]
-        #         sub_row = row[sub_row_start_idx:sub_row_start_idx + Ki-1]
-        #
-        #         one_index = sub_row.index(1) if 1 in sub_row else -1
-        #
-        #         if one_index >= 1:
-        #             tilde_idx += (Ki-one_index-1)*Ki**(i)
-        #         elif one_index ==-1:
-        #             tilde_idx += (Ki-1)*Ki**(i)
-        #
-        #         # update the information to get next subrow
-        #         sub_row_start_idx = sub_row_start_idx + Ki - 1
-        #
+        #     tilde_idx = index_dict[tuple(row)]
         #     combo_count[tilde_idx] += 1
         #     success_counts[tilde_idx] += response[index]
 
-        combo_count = []
-        success_counts = []
-        for combo in combinations:
-            # Count the occurrences of the row
-
-            target_row = combo[1:]
-            inner = df_encoded.apply(lambda row: row.tolist() == target_row, axis=1)
-            indices = df_encoded[inner].index
-            success_count = 0
-            combo_count.append(len(indices))
-            for index in indices:
-                if response[index] == 1:
-                    success_count += 1
-
-            success_counts.append(success_count)
 
         self._w_combo_counts = combo_count
 
@@ -182,17 +239,17 @@ class AnalyticalSolution:
         return self._encoded_x
 
     def fit(self):
+        # compute gamma
         cc = self._w_combo_counts
-
         W = np.diag(cc)
         X = self._x_tilde
         z = self._z
-        invert_this = np.transpose(X) @ W @ X
+        n = self._invert_this.shape[0]
+        D = np.identity(n) * self._lambda
+        invert_this = self._invert_this +  np.identity(n)*self._lambda
+
         H = inv(invert_this) @ np.transpose(X) @ W
         self._gamma = H @ z
-
-        # print("W")
-        # print(W)
 
     def get_gamma(self):
         return self._gamma
