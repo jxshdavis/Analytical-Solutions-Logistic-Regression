@@ -92,8 +92,6 @@ class Generator:
         probabilities = expit(X.dot(Beta))
         response = np.array([[bernoulli.rvs(p)] for p in probabilities])
 
-        # print("response vector:")
-        # print(response)
         return response
 
 

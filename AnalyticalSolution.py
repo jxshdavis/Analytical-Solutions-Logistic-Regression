@@ -9,19 +9,29 @@ import pandas as pd
 from numpy.linalg import inv
 
 
-
 class AnalyticalSolution:
     """
-    Generates the analytical solution when there are multiple regressors.
+    Generates an analytical estimate of beta when there are multiple regressors.
     """
 
     def encode_df(self):
+        """
+        Performes 1-hot encoding on the original dataframe.
+        returns: 1-hot encoded dataframe wit the first level of each regressor dropped.
+        """
         df = copy.deepcopy(self._x)
         df_encoded = pd.get_dummies(df, drop_first=True)
         df_encoded = df_encoded.astype(int)
         return df_encoded
 
-    def __init__(self, x, lamb = 0, nudge = 10**(-5), y=np.array([0])):
+    def __init__(self, x, lamb=0, nudge=10 ** (-5), y=np.array([0])):
+        """
+        @param x:
+        @param lamb:
+        @param nudge:
+        @param y:
+        """
+
         self._x = x
         self._y = y
         self._lambda = lamb
@@ -36,10 +46,8 @@ class AnalyticalSolution:
         self._nudge = nudge
         self._success_counts = None
 
-
     def set_lambda(self, lamb):
         self._lambda = lamb
-
 
     def get_transformed(self):
         return self._z, self._x_tilde
@@ -92,7 +100,6 @@ class AnalyticalSolution:
 
         response = [x[0] for x in self._y.tolist()]
 
-
         # start with row in df
         # method 1: faster with high number of regressors and levels
 
@@ -109,10 +116,10 @@ class AnalyticalSolution:
         levels = self._level_counts
 
         # We can also consturct the (X_tilde^T W X_tilde) matrix here
-        mat_size = 1-len(levels)+sum(levels)
+        mat_size = 1 - len(levels) + sum(levels)
         print()
 
-        invert_this = np.zeros((mat_size,mat_size))
+        invert_this = np.zeros((mat_size, mat_size))
 
         for index, row in df_encoded.iterrows():
             one_indicies = []
@@ -122,17 +129,17 @@ class AnalyticalSolution:
 
             for i in range(num_reg):
                 Ki = levels[i]
-                sub_row = row[sub_row_start_idx:sub_row_start_idx + Ki-1]
+                sub_row = row[sub_row_start_idx:sub_row_start_idx + Ki - 1]
 
                 one_index = sub_row.index(1) if 1 in sub_row else -1
 
-                if one_index !=-1:
-                    one_indicies.append(one_index+sub_row_start_idx)
+                if one_index != -1:
+                    one_indicies.append(one_index + sub_row_start_idx)
 
                 if one_index >= 1:
-                    tilde_idx += (Ki-one_index-1)*Ki**(i)
-                elif one_index ==-1:
-                    tilde_idx += (Ki-1)*Ki**(i)
+                    tilde_idx += (Ki - one_index - 1) * Ki ** (i)
+                elif one_index == -1:
+                    tilde_idx += (Ki - 1) * Ki ** (i)
 
                 # update the information to get next subrow
                 sub_row_start_idx = sub_row_start_idx + Ki - 1
@@ -140,14 +147,13 @@ class AnalyticalSolution:
             # update the invert_this matrix: \tilde X^T W \tilde X
             invert_this[0, 0] += 1
             for row in one_indicies:
-                invert_this[0, row+1] += 1
-                invert_this[row+1, 0] += 1
-                invert_this[row+1, row+1] += 1
+                invert_this[0, row + 1] += 1
+                invert_this[row + 1, 0] += 1
+                invert_this[row + 1, row + 1] += 1
                 for col in one_indicies:
                     # col0 and row0
                     if row != col:
-                        invert_this[row+1, col+1] += 1
-
+                        invert_this[row + 1, col + 1] += 1
 
             self._invert_this = invert_this
 
@@ -157,45 +163,7 @@ class AnalyticalSolution:
             # update the success counts of the row of data
             success_counts[tilde_idx] += response[index]
 
-
-
-        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-        # # # method 2: pretty slow
-        #
-        # combo_count = []
-        # success_counts = []
-        # for combo in combinations:
-        #     # Count the occurrences of the row
-        #
-        #     target_row = combo[1:]
-        #     inner = df_encoded.apply(lambda row: row.tolist() == target_row, axis=1)
-        #     indices = df_encoded[inner].index
-        #     success_count = 0
-        #     combo_count.append(len(indices))
-        #     for index in indices:
-        #         if response[index] == 1:
-        #             success_count += 1
-        #
-        #     success_counts.append(success_count)
-
-        # # method 3: dictionary index lookup
-        # num_combo = len(combinations)
-        # combo_count = [0] * num_combo
-        # success_counts = [0] * num_combo
-        #
-        # index_dict = {}
-        # for index, combo in enumerate(combinations):
-        #     index_dict[tuple(combo[1:])] = index
-        #
-        # for index, row in df_encoded.iterrows():
-        #     tilde_idx = index_dict[tuple(row)]
-        #     combo_count[tilde_idx] += 1
-        #     success_counts[tilde_idx] += response[index]
-
-
         self._w_combo_counts = combo_count
-
 
         self._success_counts = success_counts
         success_frequencies = []
@@ -245,9 +213,8 @@ class AnalyticalSolution:
         X = self._x_tilde
         z = self._z
         n = self._invert_this.shape[0]
-        D = np.identity(n) * self._lambda
-        invert_this = self._invert_this +  np.identity(n)*self._lambda
-
+        # D = np.identity(n) * self._lambda
+        invert_this = self._invert_this + np.identity(n) * self._lambda
         H = inv(invert_this) @ np.transpose(X) @ W
         self._gamma = H @ z
 
@@ -262,4 +229,3 @@ class AnalyticalSolution:
 
     def set_y(self, y):
         self._y = y
-

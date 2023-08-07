@@ -43,9 +43,6 @@ class ExperimentSimulations:
         self._num_obs = num_obs
         self._x_ax_counts = [int(x) for x in
                             np.logspace(start=log_min_x, stop=log_max_x, num=number_x_ticks)]
-
-
-
         self._num_trials = num_trials
         self._nudge = nudge
         self._gamma_errors = []
@@ -56,14 +53,11 @@ class ExperimentSimulations:
         self._analytical_fit_times = []
         self._iterative_times = []
         self._lambda = lamb
-
         self._color1 = "red"
         self._color2 = "green"
         self._color3 = "blue"
-
         self._x_boxplot = None
         self._x_ax_counts_strings = None
-
 
 
 
@@ -73,49 +67,58 @@ class ExperimentSimulations:
 
     def run_sim(self, independent_var):
         """
-        Runs the actual simulation. Saves the errors from each trial as well as fitting times.
+        Runs the actual simulation. Saves the errors from each trial as well as fitting times as plots.
         :return: None
         """
 
-
+        # grab parameter values for easier to read code
         num_trials = self._num_trials
         x_ax_counts = self._x_ax_counts
         num_levels = self._num_levels
         num_regressors = self._num_regressors
         num_obs = self._num_obs
         USE_MEAN = self._USE_MEAN
+
+        # perform each trial
         for trial in range(num_trials):
-            print(str(round((trial + 1) / num_trials * 100, 3)) + " percent finished.")
-            trial_gamma_error = []
-            trial_lib_lin_error = []
-            trial_simple_error = []
+            # print percent of trials left
+            print(str(round((trial) / num_trials * 100, 3)) + " percent finished.")
 
-            trial_analytical_transform_time = []
-            trial_analytical_fit_time = []
-            trial_iterative_time = []
+            # initialize empty lists to store errors and times for the trial
+            trial_gamma_error, trial_lib_lin_error, trial_simple_error, trial_analytical_transform_time, \
+                trial_analytical_fit_time, trial_iterative_time = [[]]*6
 
+            # set independent variable
+            if independent_var == "observations":
+                num_obs = count
+            elif independent_var == "regressors":
+                num_regressors = count
+            elif independent_var == "levels":
+                num_levels = count
+
+            # loop through the different levels of the independent variable
             for count in x_ax_counts:
 
-                if independent_var == "observations":
-                    num_obs = count
-                elif independent_var == "regressors":
-                    num_regressors = count
-                elif independent_var == "levels":
-                    num_levels = count
-
+                # if our data is not diverse enough for the solver we will try again with new data, hence the while loop
                 while True:
                     try:
+                        # run the simulation on the current inputs
                         sim1 = Simulation.Simulation(num_observations=num_obs, num_regressors=num_regressors,
                                                    num_levels=num_levels, nudge=self._nudge,
                                                    beta_range=self._beta_range,
                                                      lamb=self._lambda)
 
+                        # get the true and estimated parameter values
                         true, gamma, lib_lin_sol = sim1.get_parameters()
+
+                        # get the model fitting times
                         analytical_transform_time, analytical_fit_time, iterative_time = sim1.get_times()
+
+                        # if a single repressor get the analytic MLE estimations
                         if num_regressors == 1:
                             simple_params = sim1.get_simple_parameters()
 
-                        # compute sample errors
+                        # compute sample errors with mean or median
                         if USE_MEAN:
                             trial_gamma_error.append(((true - gamma) ** 2).mean(axis=0))
                             trial_lib_lin_error.append(((true - lib_lin_sol) ** 2).mean(axis=0))
@@ -137,14 +140,14 @@ class ExperimentSimulations:
                         print(f"An error occurred: {e}")
                         print("Retrying the iteration...")
 
-            # save trial errors and times
+            # save trial errors and times to a list containing all the trial information
             self._gamma_errors.append(trial_gamma_error)
             self._lib_lin_errors.append(trial_lib_lin_error)
             self._simple_errors.append(trial_simple_error)
-
             self._analytical_transform_times.append(trial_analytical_transform_time)
             self._analytical_fit_times.append(trial_analytical_fit_time)
             self._iterative_times.append(trial_iterative_time)
+
 
         # convert errors and times to numpy arrays for plotting
         self._gamma_errors = np.array(self._gamma_errors)
@@ -207,7 +210,7 @@ class ExperimentSimulations:
                                 np.max(np.median(lib_lin_errors, axis=0)))
 
         ax[0].set_yscale('log')  # Set y-axis to logarithmic scale
-        # ax[0].set_ylim(0, 1.5 * max_value)  # Set y-axis limit to 130% of the maximum value
+
 
         if USE_MEAN:
             title = "Average Error over " + str(num_trials) + " trials vs. Number of "+str(independent_var)

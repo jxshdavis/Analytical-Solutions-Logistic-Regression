@@ -10,11 +10,7 @@ import pandas as pd
 from numpy.linalg import inv
 import AnalyticalSolution
 import ExperimentSimulations
-
 import seaborn as sns
-
-
-
 
 
 
@@ -27,9 +23,9 @@ max_x = 5
 
 
 
-for num_reg in [16]:
+for num_reg in [2,4,8,10]:
     sim = ExperimentSimulations.ExperimentSimulations(num_trials = 100, num_regressors=num_reg, num_levels=2, num_obs=10**3, log_min_x=min_x,
-                                                      log_max_x=max_x, number_x_ticks=4, beta_range=[-5,10], lamb = 0)223
+                                                      log_max_x=max_x, number_x_ticks=4, beta_range=[-5,10], lamb=6)
     sim.run_sim("observations")
 
 
