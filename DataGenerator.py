@@ -6,6 +6,7 @@ from scipy.stats import bernoulli
 from scipy.special import expit
 import copy
 
+
 class Generator:
     """
     Randomly Generates the design matrix first and then generates the parameters. The number of regressors in the
@@ -27,7 +28,7 @@ class Generator:
         self._nudge = nudge
         self._beta_range = beta_range
         self._params = self.gen_model_params()
-        # print(self._design_matrix)
+        # x_boxplot*len(gamma_errors)(self._design_matrix)
         self._analytical_model = None
         self._encoded_x = self.transform_design()
         self._response = self.gen_response()
@@ -48,7 +49,8 @@ class Generator:
         params = [0] * (total_unique_counts - self._num_regressors + 1)
 
         for index in range(len(params)):
-            params[index] = round(random.uniform(self._beta_range[0], self._beta_range[1]), 2)
+            params[index] = round(random.uniform(
+                self._beta_range[0], self._beta_range[1]), 2)
         return params
 
     def gen_design_matrix(self):
@@ -75,7 +77,8 @@ class Generator:
         return X
 
     def transform_design(self):
-        model = AnalyticalSolution.AnalyticalSolution(self.get_design_matrix(), nudge = self._nudge)
+        model = AnalyticalSolution.AnalyticalSolution(
+            self.get_design_matrix(), nudge=self._nudge)
 
         # save the analytical model so we do not have to re-encode x in the future!
         self._analytical_model = model
@@ -94,7 +97,6 @@ class Generator:
 
         return response
 
-
     def get_design_matrix(self):
         return self._design_matrix
 
@@ -109,4 +111,3 @@ class Generator:
 
     def get_analytical_model(self):
         return self._analytical_model
-

@@ -10,19 +10,19 @@ from sklearn.linear_model import LogisticRegression
 from timeit import default_timer as timer
 
 
-
 class Simulation:
     """
     This Class generates synthetic data for logistic regression and computes iteratee MLE and analytic heuristic
     estimates of the underlying model using the DataGenerator class and sklearn's Logsitc Regression model.
     """
 
-    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, lamb):
+    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, lamb, penalty):
         self._iterative_time = None
         self._analytical_transform_time = None
         self._analytical_fit_time = None
         self._num_observations = num_observations
         self._lambda = lamb
+        self._penalty = penalty
         self._num_regressors = num_regressors
         self._num_levels = num_levels
         self._nudge = nudge
@@ -37,7 +37,6 @@ class Simulation:
         if num_regressors == 1:
             self._simple_params = self.gen_simple_parameters()
 
-
     def generate_data(self):
         generator = DataGenerator.Generator(self._num_observations, self._num_regressors, self._num_levels,
                                             self._nudge, self._beta_range)
@@ -51,8 +50,9 @@ class Simulation:
         analytical_model = self._generator.get_analytical_model()
         analytical_model.set_y(self._sim_y)
         analytical_model.set_lambda(self._lambda)
-        start_time = timer()
+        analytical_model.set_penalty(self._penalty)
 
+        start_time = timer()
         analytical_model.transform_response()
         end_time = timer()
         # z = analytical_model.get_transformed()[0].values
@@ -68,28 +68,36 @@ class Simulation:
         return analytical_model
 
     def set_iterative_model(self):
+
         # Start the timer
         start_time = timer()
         if self._lambda == 0:
-            iterative_model = LogisticRegression(solver='lbfgs', penalty='none')
+            iterative_model = LogisticRegression(
+                solver='lbfgs', penalty='none')
 
         else:
-            iterative_model = LogisticRegression(solver='liblinear', C=1/self._lambda)
+            iterative_model = LogisticRegression(
+                solver='liblinear', C=1/self._lambda)
         df_encoded = pd.get_dummies(self._sim_data, drop_first=True)
         df_encoded_1 = df_encoded.astype(int)
+
         iterative_model.fit(df_encoded_1, self._sim_y)
         end_time = timer()
 
         # set the time the model took to run
+        print("Iterative model time")
+        print(end_time - start_time)
         self._iterative_time = end_time - start_time
         return iterative_model
 
     def get_parameters(self):
         true = self._generator.get_params()
 
-        gamma = [round(x, 3) for x in self._analytical_model.get_gamma()[0].tolist()]
+        gamma = [round(x, 3)
+                 for x in self._analytical_model.get_gamma()[0].tolist()]
 
-        lib_lin_sol = list(self._iterative_model.intercept_) + list(self._iterative_model.coef_[0])
+        lib_lin_sol = list(self._iterative_model.intercept_) + \
+            list(self._iterative_model.coef_[0])
         lib_lin_sol = [round(x, 3) for x in lib_lin_sol]
 
         return np.array(true), np.array(gamma), np.array(lib_lin_sol)
@@ -112,20 +120,20 @@ class Simulation:
         elif success_count[-1] == 0:
             params.append(1 / E)
         else:
-            params.append(np.log(success_count[-1]/(combo_counts[-1]-success_count[-1])))
+            params.append(
+                np.log(success_count[-1]/(combo_counts[-1]-success_count[-1])))
 
         for index in range(0, len(success_count)-1):
-
 
             if combo_counts[index] - success_count[index] == 0:
                 ci = E
             elif success_count[index] == 0:
                 ci = 1 / E
             else:
-                ci = success_count[index]/(combo_counts[index]-success_count[index])
+                ci = success_count[index] / \
+                    (combo_counts[index]-success_count[index])
             params.append(np.log(ci) - params[0])
         return np.array(params)
 
     def get_simple_parameters(self):
         return self._simple_params
-

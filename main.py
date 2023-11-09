@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -11,24 +10,33 @@ from numpy.linalg import inv
 import AnalyticalSolution
 import ExperimentSimulations
 import seaborn as sns
-
-
+import RealDataExperiment
 
 #
 # min_x = np.log(2)/np.log(10)
 # max_x = np.log(8)/np.log(10)
 
-min_x = 2
-max_x = 5
+min_x = 3
+max_x = 4
+
+for num_reg in [3]:
+    sim = ExperimentSimulations.ExperimentSimulations(num_trials=50, num_regressors=num_reg, num_levels=2, num_obs=10**3, log_min_x=min_x,
+                                                      log_max_x=max_x, number_x_ticks=5, beta_range=[-3, 3], penalty=None)
+    sim.run_observation_sim()
 
 
+#
+# cancer_experiment = RealDataExperiment.RealDataExperiment(response_col_name='diagnosis',
+#                                                           num_cols=2,
+#                                                           data_pathname='/Users/joshdavis/Desktop/Meng Research/Analytical-Solutions-Logistic-Regression/datsets/cancer-data.csv',
+#                                                           num_levels=2, drop_these=['Unnamed: 32', 'id', 'diagnosis'])
+#
+#
+# cancer_experiment.fit_models()
+# cancer_experiment.get_params()
 
-for num_reg in [2,4,8,10]:
-    sim = ExperimentSimulations.ExperimentSimulations(num_trials = 100, num_regressors=num_reg, num_levels=2, num_obs=10**3, log_min_x=min_x,
-                                                      log_max_x=max_x, number_x_ticks=4, beta_range=[-5,10], lamb=6)
-    sim.run_sim("observations")
 
-
+# real data stuff below
 
 
 # For real data, first we want to discretize the numeric covariates
@@ -75,5 +83,3 @@ for num_reg in [2,4,8,10]:
 #
 # print(anal_sol.get_gamma())
 # print(lib_lin_sol)
-
-
