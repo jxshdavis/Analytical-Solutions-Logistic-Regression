@@ -52,18 +52,14 @@ class Simulation:
         analytical_model.set_lambda(self._lambda)
         analytical_model.set_penalty(self._penalty)
 
-        start_time = timer()
-        analytical_model.transform_response()
-        end_time = timer()
+        fit_time, transform_time = analytical_model.transform_response()
+
         # z = analytical_model.get_transformed()[0].values
         # x_tilde = analytical_model.get_transformed()[1]
-        self._analytical_transform_time = end_time - start_time
-        start_time = timer()
-        analytical_model.fit()
 
-        end_time = timer()
-
-        self._analytical_fit_time = end_time - start_time
+        # self._analytical_transform_time = transform_time
+        self._analytical_transform_time = transform_time
+        self._analytical_fit_time = fit_time
 
         return analytical_model
 
@@ -73,7 +69,7 @@ class Simulation:
         start_time = timer()
         if self._lambda == 0:
             iterative_model = LogisticRegression(
-                solver='lbfgs', penalty='none')
+                solver='lbfgs', penalty=None)
 
         else:
             iterative_model = LogisticRegression(
@@ -81,24 +77,23 @@ class Simulation:
         df_encoded = pd.get_dummies(self._sim_data, drop_first=True)
         df_encoded_1 = df_encoded.astype(int)
 
-        iterative_model.fit(df_encoded_1, self._sim_y)
+        iterative_model.fit(df_encoded_1, self._sim_y.ravel())
         end_time = timer()
 
         # set the time the model took to run
-        print("Iterative model time")
-        print(end_time - start_time)
+        # print("Iterative model time")
+        # print(end_time - start_time)
         self._iterative_time = end_time - start_time
         return iterative_model
 
     def get_parameters(self):
         true = self._generator.get_params()
 
-        gamma = [round(x, 3)
-                 for x in self._analytical_model.get_gamma()[0].tolist()]
+        gamma = self._analytical_model.get_gamma().tolist()
 
         lib_lin_sol = list(self._iterative_model.intercept_) + \
             list(self._iterative_model.coef_[0])
-        lib_lin_sol = [round(x, 3) for x in lib_lin_sol]
+        lib_lin_sol = [x for x in lib_lin_sol]
 
         return np.array(true), np.array(gamma), np.array(lib_lin_sol)
 

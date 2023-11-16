@@ -44,7 +44,7 @@ class AnalyticalSolution:
         self._x_tilde = None
         self._invert_this = None
         self._z = None
-        self._Xz = None
+        # self._Xz = None
         self._level_counts = None
 
         # count the number of levels of each predictor
@@ -108,143 +108,79 @@ class AnalyticalSolution:
         self._x_tilde = xt
 
         prod = (xt.T).dot(xt)
+
         print(prod)
 
     def transform_response(self):
 
-        # perform 1-hot encoding
+        start_time = timer()
+
         df_encoded = self._encoded_x
 
-        # combinations = self._x_tilde.values.tolist()
-        # self._combinations = combinations
+        ones_column = np.ones((df_encoded.shape[0], 1), dtype=int)
+        # df_encoded = np.hstack((ones_column, df_encoded))
+
+        y = self._y
+
+        decimal_numbers = np.dot(
+            df_encoded, 2 ** np.arange(df_encoded.shape[1])[::-1])
+
+        # unq, inverse_indices, cnt = np.unique(
+        #     df_encoded, axis=0, return_counts=True, return_inverse=True)
+
+        unq, indices,  inverse_indices, cnt = np.unique(
+            decimal_numbers, axis=0, return_index=True, return_counts=True, return_inverse=True)
+
+        # sorted_indices = sorted(indices)
+        # unq = decimal_numbers[sorted_indices]
+
+        # sorted_inverse_indices = np.argsort(sorted_indices)[inverse_indices]
+
+        num_bits = df_encoded.shape[1]
+        unq = ((unq[:, None] & (
+            1 << np.arange(num_bits)[::-1])) > 0).astype(int)
+
+        end_time = timer()
+        transform_time = end_time - start_time
+
+        start_time = timer()
 
         response = [x[0] for x in self._y.tolist()]
 
-        # start with row in df
-        # method 1: faster with high number of regressors and levels
+        # Compute success_counts
+        success_counts = np.bincount(inverse_indices, weights=response)
 
-        num_reg = self._x.shape[1]
+        # Compute success_frequencies
+        count_per_row = np.bincount(inverse_indices)
+        success_frequencies = np.where(
+            count_per_row > 0, success_counts / count_per_row, 0)
 
-        combo_count = defaultdict(int)
+        # To remove rows where freq == 0 or freq == 1
+        to_delete = np.where((success_frequencies == 0) |
+                             (success_frequencies == 1))[0]
 
-        num_reg = self._x.shape[1]
+        success_frequencies = np.delete(
+            np.array(success_frequencies), to_delete, axis=0)
+        unq = np.delete(unq, to_delete, axis=0)
 
-        success_counts = defaultdict(int)
+        cnt = np.delete(cnt, to_delete, axis=0)
 
-        levels = self._level_counts
+        W = np.diag(cnt * success_frequencies*(1-success_frequencies))
 
-        # We can also consturct the (X_tilde^T W X_tilde) matrix here
-        mat_size = 1 - len(levels) + sum(levels)
-        # print()
+        z = np.log((success_frequencies) / (1-success_frequencies))
 
-        invert_this = np.zeros((mat_size, mat_size))
+        # add intercept column to unq
+        ones_column = np.ones((unq.shape[0], 1), dtype=int)
+        unq = np.hstack((ones_column, unq))
 
-        list_of_tilde_indicies = []
-        list_of_one_indicies = []
-
-        start_time = timer()
-        for index, row in df_encoded.iterrows():
-            one_indicies = []
-            sub_row_start_idx = 0
-            row = row.tolist()
-            tilde_idx = 0
-
-            for i in range(num_reg):
-                Ki = levels[i]
-                sub_row = row[sub_row_start_idx:sub_row_start_idx + Ki - 1]
-
-                one_index = sub_row.index(1) if 1 in sub_row else -1
-
-                if one_index != -1:
-                    one_indicies.append(one_index + sub_row_start_idx)
-
-                if one_index >= 1:
-                    tilde_idx += (Ki - one_index - 1) * Ki ** (i)
-                elif one_index == -1:
-                    tilde_idx += (Ki - 1) * Ki ** (i)
-
-                # update the information to get next subrow
-                sub_row_start_idx = sub_row_start_idx + Ki - 1
-
-            # update the counts of each row of the data
-            list_of_one_indicies.append(one_indicies)
-            list_of_tilde_indicies.append(tilde_idx)
-            combo_count[tilde_idx] += 1
-
-            # update the success counts of the row of data
-            success_counts[tilde_idx] += response[index]
-
-        # time to compute our success frequencies
+        Xw = unq.T @ W
+        g = inv(Xw@unq) @ Xw @ z
+        self._gamma = g
         end_time = timer()
-        print("first time chunk: compute success coutnts and lists of indicies")
-        print(end_time-start_time)
 
-        start_time = timer()
-        success_frequencies = defaultdict(int)
-        for tilde_idx in list(success_counts.keys()):
-            if combo_count[tilde_idx] != 0:
-                success_frequencies[tilde_idx] = success_counts[tilde_idx] / \
-                    combo_count[tilde_idx]
+        fit_time = end_time - start_time
 
-        for design_idx in range(len(list_of_one_indicies)):
-            one_indicies = list_of_one_indicies[design_idx]
-            tilde_idx = list_of_tilde_indicies[design_idx]
-
-            f = success_frequencies[tilde_idx]
-            alpha = f*(1-f)
-            invert_this[0, 0] += alpha
-
-            for row in one_indicies:
-                invert_this[0, row + 1] += alpha
-                invert_this[row + 1, 0] += alpha
-                invert_this[row + 1, row + 1] += alpha
-                for col in one_indicies:
-                    # col0 and row0
-                    if row != col:
-                        invert_this[row + 1, col + 1] += alpha
-        end_time = timer()
-        print("second time chunk: compute invert this")
-        print(end_time-start_time)
-
-        # self._w_combo_counts = combo_count
-        self._invert_this = invert_this
-        self._success_counts = success_counts
-
-        # keys = sorted(success_frequencies.keys())
-        # sf = [success_frequencies[idx] for idx in keys]
-
-        # find X^T z directly here
-
-        start_time = timer()
-        set_of_tilde_indicies = set(list_of_tilde_indicies)
-        Xz = np.array([0] * mat_size)
-
-        unique_rows = df_encoded.drop_duplicates()
-        # Optionally reset the index
-        unique_rows = unique_rows.reset_index(drop=True)
-
-        # print(unique_rows)
-
-        unique_indicies = []
-        unique_set = set()
-
-        for idx in list_of_tilde_indicies:
-            if idx not in unique_set:
-                unique_set.add(idx)
-                unique_indicies.append(idx)
-
-        for index, row in unique_rows.iterrows():
-            tilde_idx = unique_indicies[index]
-            row = row.values.tolist()
-            f = success_frequencies[tilde_idx]
-            Xz = Xz + combo_count[tilde_idx]*f * \
-                (1-f)*np.array([1]+row) * math.log(f/(1-f))
-
-        end_time = timer()
-        print("third time chunk: compute Xz")
-        print(end_time-start_time)
-
-        self._Xz = pd.DataFrame(Xz)
+        return fit_time, transform_time
 
     def count_levels(self):
         data = np.array(copy.deepcopy(self._x))

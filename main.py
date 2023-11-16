@@ -16,13 +16,15 @@ import RealDataExperiment
 # min_x = np.log(2)/np.log(10)
 # max_x = np.log(8)/np.log(10)
 
-min_x = 3
-max_x = 4
+min_x = 2
+max_x = 7
 
-for num_reg in [3]:
-    sim = ExperimentSimulations.ExperimentSimulations(num_trials=50, num_regressors=num_reg, num_levels=2, num_obs=10**3, log_min_x=min_x,
-                                                      log_max_x=max_x, number_x_ticks=5, beta_range=[-3, 3], penalty=None)
+for num_reg in [2]:
+    sim = ExperimentSimulations.ExperimentSimulations(num_trials=10, num_regressors=num_reg, num_levels=2, num_obs=10**3, log_min_x=min_x,
+                                                      log_max_x=max_x, number_x_ticks=5, beta_range=[-2, 2], penalty=None)
     sim.run_observation_sim()
+
+    # sim.run_regressors_sim()
 
 
 #
