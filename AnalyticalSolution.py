@@ -25,9 +25,10 @@ class AnalyticalSolution:
         df = copy.deepcopy(self._x)
         df_encoded = pd.get_dummies(df, drop_first=True)
         df_encoded = df_encoded.astype(int)
+
         return df_encoded
 
-    def __init__(self, x, lamb=[0], nudge=10 ** (-5), y=np.array([0])):
+    def __init__(self, x, sample_size_info, lamb=[0], nudge=10 ** (-5), y=np.array([0]), large_sample_rows=None):
         """
         @param x: Your data matrix with each regressor having at least 1 of all of its levels in its collumn. Do not
                     pass in a 1-hot encoded matrix - that will be done within the class.
@@ -46,19 +47,28 @@ class AnalyticalSolution:
         self._z = None
         # self._Xz = None
         self._level_counts = None
+        self._large_sample_rows = large_sample_rows
+        self._sample_size_info = sample_size_info
+        self._w_combo_counts = None
+        self._gamma = None
+        self._nudge = nudge
+        self._success_counts = None
+        self._row_counts = None
+        self._remaining_num_batch_samples = None
 
         # count the number of levels of each predictor
+
+        start = timer()
         self.count_levels()
+        end = timer()
+
+        print("count levels  time")
+        print(end - start)
 
         # if X is not encoded with dummy varibles, we do so here
         self._encoded_x = self.encode_df()
 
         # self.transform_design(self)
-
-        self._w_combo_counts = None
-        self._gamma = None
-        self._nudge = nudge
-        self._success_counts = None
 
     def set_lambda(self, lamb):
         self._lambda = lamb
@@ -113,6 +123,10 @@ class AnalyticalSolution:
 
     def transform_response(self):
 
+        batch_integers, individual_integers, num_individual_samples, num_batch_samples = self._sample_size_info
+
+        individual_integers = np.array(list(individual_integers))
+
         start_time = timer()
 
         df_encoded = self._encoded_x
@@ -137,13 +151,10 @@ class AnalyticalSolution:
         # sorted_inverse_indices = np.argsort(sorted_indices)[inverse_indices]
 
         num_bits = df_encoded.shape[1]
-        unq = ((unq[:, None] & (
-            1 << np.arange(num_bits)[::-1])) > 0).astype(int)
+        # unq_nums = copy.deepcopy(unq)
 
         end_time = timer()
         transform_time = end_time - start_time
-
-        start_time = timer()
 
         response = [x[0] for x in self._y.tolist()]
 
@@ -152,33 +163,54 @@ class AnalyticalSolution:
 
         # Compute success_frequencies
         count_per_row = np.bincount(inverse_indices)
+
         success_frequencies = np.where(
             count_per_row > 0, success_counts / count_per_row, 0)
 
         # To remove rows where freq == 0 or freq == 1
-        to_delete = np.where((success_frequencies == 0) |
-                             (success_frequencies == 1))[0]
+        to_delete = np.where((success_frequencies == 0) | (
+            success_frequencies == 1) | (count_per_row <= 0))[0]
+
+        nums_to_delete = unq[to_delete]
+
+        remaining_batch_integers = np.setdiff1d(batch_integers, nums_to_delete)
+
+        remaining_num_batch_samples = remaining_batch_integers.shape[0]
+
+        self._remaining_num_batch_samples = remaining_num_batch_samples
+
+        # remaining_individual_integers = np.setdiff1d(
+        #     individual_integers, nums_to_delete)
 
         success_frequencies = np.delete(
             np.array(success_frequencies), to_delete, axis=0)
+
         unq = np.delete(unq, to_delete, axis=0)
 
         cnt = np.delete(cnt, to_delete, axis=0)
+        self._row_counts = cnt
 
         W = np.diag(cnt * success_frequencies*(1-success_frequencies))
 
         z = np.log((success_frequencies) / (1-success_frequencies))
 
+        unq = ((unq[:, None] & (1 << np.arange(num_bits)[::-1]))
+               > 0).astype(int)
+
         # add intercept column to unq
         ones_column = np.ones((unq.shape[0], 1), dtype=int)
         unq = np.hstack((ones_column, unq))
 
+        start_time = timer()
         Xw = unq.T @ W
         g = inv(Xw@unq) @ Xw @ z
         self._gamma = g
         end_time = timer()
 
         fit_time = end_time - start_time
+        print()
+        print(f"fit time: {fit_time}")
+        print(f"transform time: {transform_time}")
 
         return fit_time, transform_time
 
@@ -186,10 +218,15 @@ class AnalyticalSolution:
         data = np.array(copy.deepcopy(self._x))
         num_rows, num_cols = data.shape
 
-        K = []
+        # K = []
         # obtain the K_js
-        for col in range(0, num_cols):
-            K.append(len(set(data[:, col].flatten())))
+
+        K = [np.unique(
+            data[:, 0]).shape[0]]*num_cols
+
+        # for col in range(0, num_cols):
+        #     K.append(len(set(data[:, col].flatten())))
+
         self._level_counts = K
         return K
 
@@ -197,62 +234,16 @@ class AnalyticalSolution:
         return self._encoded_x
 
     def fit(self, center_design=False):
-        # compute gamma
-        # cc = self._w_combo_counts
-        # W = np.diag(cc)
-        # X = self._x_tilde
-        # z = self._z
 
         n = self._invert_this.shape[0]
 
-        # D = np.identity(n) * self._lambda
-
-        # if center_design:
-        #     X = self._x_tilde - np.mean(self._x_tilde)
-
-        # recompute this product since the computational shortcut we used before does not work with the centered X
-
-        # self._invert_this = np.transpose(X) @ W @ X
-
-        # If we are using a penalty we want to center the deisgn matrix for the penalized regression so that
-        # we do not end up having an intercept (we do not want to penalize an intercept so we just remove it)
-        # if self._penalty != None:
-        #     Xp = self._invert_this - np.mean(self._invert_this)
-        # else:
-        #     Xp = self._invert_this
-
         invert_this = self._invert_this
-
-        # if self._penalty == None:
-        #     H = inv(invert_this) @ np.transpose(X) @ W
-        #     self._gamma = H @ z
-        # else:
-        #     if self._penalty == "l2":
-        #         clf = Ridge()
-        #     elif self.set_penalty == 'l1':
-        #         clf = Lasso()
 
         Xz = self._Xz
 
         g = inv(invert_this) @ Xz
 
         self._gamma = g
-
-        # param_grid = [{"alpha": self._lambda}]
-        # grid_search = GridSearchCV(
-        # clf, param_grid, cv=3, scoring="accuracy", verbose=10)
-        # If we are running regression we want to center z so that there is no intercept, to match our removale
-        # of the intercept for the penalized analytical model
-        # z = z - np.mean(z)
-
-        # grid_search.fit(X, z, sample_weight=[1 / x for x in cc])
-
-        # final_clf = grid_search.best_estimator_
-        # params = final_clf.coef_
-
-        # H = inv(invert_this) @ np.transpose(X) @ W
-        # g = H @ z
-        # print("done")
 
     def get_gamma(self):
         return self._gamma
@@ -265,3 +256,6 @@ class AnalyticalSolution:
 
     def set_y(self, y):
         self._y = y
+
+    def get_mixing_info(self):
+        return self._row_counts, self._remaining_num_batch_samples

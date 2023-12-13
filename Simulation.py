@@ -16,8 +16,10 @@ class Simulation:
     estimates of the underlying model using the DataGenerator class and sklearn's Logsitc Regression model.
     """
 
-    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, lamb, penalty):
+    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, lamb, penalty, mixing_percentage, large_samples_size, random_data=True):
         self._iterative_time = None
+        self._mixing_percentage = mixing_percentage
+        self._large_samples_size = large_samples_size
         self._analytical_transform_time = None
         self._analytical_fit_time = None
         self._num_observations = num_observations
@@ -28,7 +30,13 @@ class Simulation:
         self._nudge = nudge
         self._beta_range = beta_range
         # get the generated data
+
+        start = timer()
         self._generator, self._sim_data, self._sim_y = self.generate_data()
+        end = timer()
+
+        print("data gen time")
+        print(end - start)
 
         # set the two models
         self._analytical_model = self.set_analytical_model()
@@ -39,7 +47,8 @@ class Simulation:
 
     def generate_data(self):
         generator = DataGenerator.Generator(self._num_observations, self._num_regressors, self._num_levels,
-                                            self._nudge, self._beta_range)
+                                            self._nudge, self._beta_range, mixing_percentage=self._mixing_percentage,
+                                            large_samples_size=self._large_samples_size)
         sim_data_1 = generator.get_design_matrix()
         sim_y_1 = generator.get_response()
 
@@ -48,6 +57,7 @@ class Simulation:
     def set_analytical_model(self):
 
         analytical_model = self._generator.get_analytical_model()
+
         analytical_model.set_y(self._sim_y)
         analytical_model.set_lambda(self._lambda)
         analytical_model.set_penalty(self._penalty)
@@ -58,7 +68,7 @@ class Simulation:
         # x_tilde = analytical_model.get_transformed()[1]
 
         # self._analytical_transform_time = transform_time
-        self._analytical_transform_time = transform_time
+        self._analytical_transform_time = 0
         self._analytical_fit_time = fit_time
 
         return analytical_model
@@ -81,8 +91,8 @@ class Simulation:
         end_time = timer()
 
         # set the time the model took to run
-        # print("Iterative model time")
-        # print(end_time - start_time)
+        print("Iterative model time")
+        print(end_time - start_time)
         self._iterative_time = end_time - start_time
         return iterative_model
 
@@ -132,3 +142,6 @@ class Simulation:
 
     def get_simple_parameters(self):
         return self._simple_params
+
+    def get_analytical_model(self):
+        return self._analytical_model

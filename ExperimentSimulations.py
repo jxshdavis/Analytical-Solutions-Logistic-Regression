@@ -21,8 +21,21 @@ class ExperimentSimulations:
     only perform the multi-regressor solution.
     """
 
-    def __init__(self, num_trials, num_regressors, num_levels, log_min_x, log_max_x,
-                 number_x_ticks, num_obs=10**3, nudge=10 ** (-5), beta_range=[-5, 10], lamb=0, penalty="l2", logspace=True, use_mean=True):
+    def __init__(self,
+                 num_trials,
+                 num_regressors, num_levels,
+                 log_min_x,
+                 log_max_x,
+                 number_x_ticks,
+                 mixing_percentage=0,
+                 large_samples_size=30,
+                 num_obs=10**3,
+                 nudge=10 ** (-5),
+                 beta_range=[-5, 10],
+                 lamb=0,
+                 penalty="l2",
+                 logspace=True,
+                 use_mean=True):
         """
         :param num_trials: the number of simulations to run - the final plots will show the averages over all trials.
         :param num_regressors: the number of regressors the generated design matrix will have
@@ -38,12 +51,13 @@ class ExperimentSimulations:
         """
         # set true to use means and set false to use medians
         self._USE_MEAN = use_mean
+        self._mixing_percentage = mixing_percentage
+        self._large_samples_size = large_samples_size
         self._num_regressors = num_regressors
         self._num_levels = num_levels
         self._num_obs = num_obs
         self._x_ax_counts = [int(x) for x in
                              np.logspace(start=log_min_x, stop=log_max_x, num=number_x_ticks)]
-
         self._num_trials = num_trials
         self._nudge = nudge
         self._gamma_errors = []
@@ -53,6 +67,7 @@ class ExperimentSimulations:
         self._analytical_transform_times = []
         self._analytical_fit_times = []
         self._iterative_times = []
+        self._remaining_mixed_proportions = []
         self._lambda = lamb
         self._penalty = penalty
         self._color1 = "red"
@@ -85,6 +100,21 @@ class ExperimentSimulations:
         USE_MEAN = self._USE_MEAN
 
         # perform each trial
+
+        mixed_proportions = []
+        for count in x_ax_counts:
+            N_prime = int(count * self._mixing_percentage /
+                          self._large_samples_size)
+
+            a = 0
+            b = 2**num_regressors
+            if b - a + 1 < N_prime:
+                N_prime = b-a
+
+            N = int(count * (1-self._mixing_percentage))
+
+            mixed_proportions.append(N/(N+N_prime*self._large_samples_size))
+
         for trial in range(num_trials):
             # print percent of trials left
             print(str(round((trial) / num_trials * 100, 3)) + " percent finished.")
@@ -92,6 +122,10 @@ class ExperimentSimulations:
             # initialize empty lists to store errors and times for the trial
             trial_gamma_error, trial_lib_lin_error, trial_simple_error, trial_analytical_transform_time, \
                 trial_analytical_fit_time, trial_iterative_time = [], [], [], [], [], []
+
+            # intialize lists to store mixing proportions after deletion
+
+            trial_remaining_mixed_proportions = []
 
             # loop through the different levels of the independent variable
             for count in x_ax_counts:
@@ -104,6 +138,8 @@ class ExperimentSimulations:
                 elif independent_var == "levels":
                     num_levels = count
 
+                # save mixing information for the fixing plot
+
                 # if our data is not diverse enough for the solver we will try again with new data, hence the while loop
                 while True:
                     try:
@@ -111,7 +147,16 @@ class ExperimentSimulations:
                         sim1 = Simulation.Simulation(num_observations=num_obs, num_regressors=num_regressors,
                                                      num_levels=num_levels, nudge=self._nudge,
                                                      beta_range=self._beta_range,
-                                                     lamb=self._lambda, penalty=self._penalty)
+                                                     lamb=self._lambda, penalty=self._penalty,
+                                                     mixing_percentage=self._mixing_percentage,
+                                                     large_samples_size=self._large_samples_size)
+
+                        analytical_model = sim1.get_analytical_model()
+                        row_counts, remaining_num_batch_samples = analytical_model.get_mixing_info()
+                        total_samples = row_counts.sum()
+                        N = total_samples - remaining_num_batch_samples * self._large_samples_size
+                        trial_remaining_mixed_proportions.append(
+                            N / total_samples)
 
                         # get the true and estimated parameter values
                         true, gamma, lib_lin_sol = sim1.get_parameters()
@@ -161,6 +206,9 @@ class ExperimentSimulations:
             self._analytical_fit_times.append(trial_analytical_fit_time)
             self._iterative_times.append(trial_iterative_time)
 
+            self._remaining_mixed_proportions.append(
+                trial_remaining_mixed_proportions)
+
         # convert errors and times to numpy arrays for plotting
         self._gamma_errors = np.array(self._gamma_errors)
         self._lib_lin_errors = np.array(self._lib_lin_errors)
@@ -171,10 +219,13 @@ class ExperimentSimulations:
         self._analytical_fit_times = np.array(self._analytical_fit_times)
         self._iterative_times = np.array(self._iterative_times)
 
-        self.plot_errors(independent_var)
+        self._remaining_mixed_proportions = np.array(
+            self._remaining_mixed_proportions)
+
+        self.plot_errors(independent_var, mixed_proportions)
         self.plot_times(independent_var)
 
-    def plot_errors(self, independent_var):
+    def plot_errors(self, independent_var, mixed_proportions):
         """
         Saves the plot displaying information on errors obtained from the simulation.
         :return: None
@@ -188,6 +239,10 @@ class ExperimentSimulations:
         gamma_errors = self._gamma_errors
         lib_lin_errors = self._lib_lin_errors
         simple_errors = self._simple_errors
+
+        mean_remaining_mixed_proportions = np.mean(
+            self._remaining_mixed_proportions, axis=0)
+
         # plot results
         sns.set_style('whitegrid')
         n_colors = 10
@@ -205,7 +260,7 @@ class ExperimentSimulations:
         self._color2 = color2
         self._color3 = color3
 
-        fig, ax = plt.subplots(1, 2, figsize=(14, 5))
+        fig, ax = plt.subplots(2, 2, figsize=(14, 10))
 
         if num_regressors == 1:
             if USE_MEAN:
@@ -222,7 +277,7 @@ class ExperimentSimulations:
                 max_value = max(np.max(np.median(gamma_errors, axis=0)),
                                 np.max(np.median(lib_lin_errors, axis=0)))
 
-        ax[0].set_yscale('log')  # Set y-axis to logarithmic scale
+        ax[0][0].set_yscale('log')  # Set y-axis to logarithmic scale
 
         if USE_MEAN:
             title = "Average Error over " + \
@@ -231,16 +286,16 @@ class ExperimentSimulations:
             title = "Median Error over " + \
                 str(num_trials) + " trials vs. Number of "+str(independent_var)
 
-        ax[0].text(x=0.5, y=1.1, s=title, fontsize=12, weight='bold', ha='center', va='bottom',
-                   transform=ax[0].transAxes)
-        ax[0].text(x=0.5, y=1.00,
-                   s="Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
-                       num_levels) + " levels.\nElements of the true"
-                                     "beta are uniformly selected from the range [" + str(
-                                         self._beta_range[0]) + ", "
-                     + str(self._beta_range[1]) + "].", fontsize=8, alpha=0.75, ha='center',
-                   va='bottom', transform=ax[0].transAxes)
-        ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=90)
+        ax[0][0].text(x=0.5, y=1.1, s=title, fontsize=12, weight='bold', ha='center', va='bottom',
+                      transform=ax[0][0].transAxes)
+        ax[0][0].text(x=0.5, y=1.00,
+                      s="Data Randomly Generated with " + str(num_regressors) + " categorical regressors each with " + str(
+                          num_levels) + " levels.\nElements of the true"
+                      "beta are uniformly selected from the range [" + str(
+                          self._beta_range[0]) + ", "
+                      + str(self._beta_range[1]) + "].", fontsize=8, alpha=0.75, ha='center',
+                      va='bottom', transform=ax[0][0].transAxes)
+        ax[0][0].set_xticklabels(ax[0][0].get_xticklabels(), rotation=90)
 
         # Create an array to hold the boxplot data
         box_data_gamma = []
@@ -288,17 +343,17 @@ class ExperimentSimulations:
         if num_regressors == 1:
             df_simple_box = pd.DataFrame(
                 {"x": np.array(x_boxplot), "y": np.array(y_boxplot_simple)})
-            sns.boxplot(x='x', y='y', ax=ax[0], data=df_simple_box, width=.1, color=color3, saturation=.5,
+            sns.boxplot(x='x', y='y', ax=ax[0][0], data=df_simple_box, width=.1, color=color3, saturation=.5,
                         boxprops=dict(alpha=.4),
                         whiskerprops=dict(color=color3), capprops=dict(color=color3), medianprops=dict(color=color3),
                         flierprops=dict(markerfacecolor=color3, markeredgecolor=color3))
 
-        sns.boxplot(x='x', y='y', ax=ax[0], data=df_gamma_box, width=.3, color=color1, saturation=.5,
+        sns.boxplot(x='x', y='y', ax=ax[0][0], data=df_gamma_box, width=.3, color=color1, saturation=.5,
                     boxprops=dict(alpha=.3),
                     whiskerprops=dict(color=color1), capprops=dict(color=color1), medianprops=dict(color=color1),
                     flierprops=dict(markerfacecolor=color1, markeredgecolor=color1))
 
-        sns.boxplot(x='x', y='y', ax=ax[0], data=df_lib_lin_box, width=.2, color=color2, saturation=.5,
+        sns.boxplot(x='x', y='y', ax=ax[0][0], data=df_lib_lin_box, width=.2, color=color2, saturation=.5,
                     boxprops=dict(alpha=.4),
                     whiskerprops=dict(color=color2), capprops=dict(color=color2), medianprops=dict(color=color2),
                     flierprops=dict(markerfacecolor=color2, markeredgecolor=color2))
@@ -313,18 +368,18 @@ class ExperimentSimulations:
             y_simple = np.median(simple_errors, axis=0)
 
         sns.lineplot(x=x_ax_counts_strings, y=y_gam, color=color1,
-                     label='Analytic', linewidth=2, ax=ax[0])
+                     label='Analytic', linewidth=2, ax=ax[0][0])
         sns.lineplot(x=x_ax_counts_strings, y=y_iter, color=color2,
-                     label='Standard Iterative', linewidth=2, ax=ax[0])
+                     label='Standard Iterative', linewidth=2, ax=ax[0][0])
         if num_regressors == 1:
             sns.lineplot(x=x_ax_counts_strings, y=y_simple, color=color3, label='Simple Analytic MLE', linewidth=2,
-                         ax=ax[0])
+                         ax=ax[0][0])
 
-        ax[0].set_xlabel("Number of "+str(independent_var))
-        ax[0].set_ylabel("Average MSE (Predicted Beta vs Actual Beta)")
+        ax[0][0].set_xlabel("Number of "+str(independent_var))
+        ax[0][0].set_ylabel("Average MSE (Predicted Beta vs Actual Beta)")
 
-        h, l = ax[0].get_legend_handles_labels()
-        ax[0].legend(h[:4], l[:4], bbox_to_anchor=(1.05, 1), loc=2)
+        h, l = ax[0][0].get_legend_handles_labels()
+        ax[0][0].legend(h[:4], l[:4], bbox_to_anchor=(1.05, 1), loc=2)
 
         # difference in MSE plot
 
@@ -337,24 +392,24 @@ class ExperimentSimulations:
             df_diff_simple = df_simple_box.copy()
             df_diff_simple['y'] = df_simple_box['y'].subtract(
                 df_lib_lin_box['y'])
-            sns.boxplot(x='x', y='y', ax=ax[1], data=df_diff_simple, width=.2, boxprops=dict(alpha=0.5), color=color3,
+            sns.boxplot(x='x', y='y', ax=ax[0][1], data=df_diff_simple, width=.2, boxprops=dict(alpha=0.5), color=color3,
                         whiskerprops=dict(color=color3), capprops=dict(color=color3), medianprops=dict(color=color3),
                         flierprops=dict(markerfacecolor=color3, markeredgecolor=color3))
 
-        sns.boxplot(x='x', y='y', ax=ax[1], data=df_diff_analytic, width=.2, boxprops=dict(alpha=0.5), color=color1,
+        sns.boxplot(x='x', y='y', ax=ax[0][1], data=df_diff_analytic, width=.2, boxprops=dict(alpha=0.5), color=color1,
                     whiskerprops=dict(color=color1), capprops=dict(color=color1), medianprops=dict(color=color1),
                     flierprops=dict(markerfacecolor=color1, markeredgecolor=color1))
 
-        ax[1].axhline(y=0, linestyle='--', color="black")
-        ax[1].set_xlabel("Number of "+str(independent_var))
+        ax[0][1].axhline(y=0, linestyle='--', color="black")
+        ax[0][1].set_xlabel("Number of "+str(independent_var))
 
         y_lab = "Difference in Average MSE (Predicted Beta vs Actual Beta)"
         if not USE_MEAN:
             y_lab = "Difference in Average Median Squared Error (Predicted Beta vs Actual Beta)"
 
-        ax[1].set_ylabel(
+        ax[0][1].set_ylabel(
             "Difference in Average MSE (Predicted Beta vs Actual Beta)")
-        ax[1].set_yscale('symlog')
+        ax[0][1].set_yscale('symlog')
 
         if USE_MEAN:
             title2 = "Difference in Average Error over " + \
@@ -381,15 +436,74 @@ class ExperimentSimulations:
                 num_regressors) + " regressors.\nWe compare the error of the analytic solution to the error of iterative " \
                 "solution. Nudge parameter is set to " + str(self._nudge) + "."
 
-        ax[1].text(x=1.95, y=1.1, s=title2, fontsize=12, weight='bold', ha='center', va='bottom',
-                   transform=ax[0].transAxes)
-        ax[1].text(x=1.95, y=1.03,
-                   s=subtitle,
-                   fontsize=8, alpha=0.75, ha='center', va='bottom', transform=ax[0].transAxes)
+        subtitle3 = "Mixing percentage: " + \
+            str(self._mixing_percentage) + "\n. Large sampling batch size of " + \
+            str(self._large_samples_size) + "."
+
+        ax[0][1].text(x=1.95, y=1.1, s=title2, fontsize=12, weight='bold', ha='center', va='bottom',
+                      transform=ax[0][0].transAxes)
+        ax[0][1].text(x=1.95, y=1.03,
+                      s=subtitle,
+                      fontsize=8, alpha=0.75, ha='center', va='bottom', transform=ax[0][0].transAxes)
+
+        x_middle = 0.35
+        y_middle = 0.5 * (ax[0][0].get_position().ymax +
+                          ax[0][1].get_position().ymin)
+
+        fig.text(x_middle, y_middle, subtitle3,
+                 fontsize=10)
+
+        bottom_row_data = [mixed_proportions, mean_remaining_mixed_proportions]
+        bottom_row_titles = ['Proportion of Data sampled with indivudual vs block sampling',
+                             'Mean Resulting Proportion of Data sampled with\n indivudual vs block sampling after Row Deletion']
+
+        for col in [0, 1]:
+            data = bottom_row_data[col]
+            title = bottom_row_titles[col]
+
+            ax[1][col].set_frame_on(False)
+            ax[1][col].xaxis.set_visible(False)
+            ax[1][col].yaxis.set_visible(False)
+
+            # Set the bar width and space between bars
+            bar_width = 0.25  # Make the bars twice as thin
+            bar_space = 0.2  # Adjust the space between bars as needed
+
+            # Teal color using RGB values
+            teal_color_rgb = (89, 156, 156)
+            teal_color_normalized = tuple(
+                val / 255.0 for val in teal_color_rgb)
+
+            # Calculate positions for bars
+            bar_positions = np.arange(0, len(data) *
+                                      (bar_width + bar_space), (bar_width + bar_space))
+
+            # Create bars with two stacked sections
+            blue_heights = np.array(data)
+            pink_heights = 1 - blue_heights
+
+            # Blue section with teal color
+            ax[1][col].bar(bar_positions, blue_heights, bar_width,
+                           color=teal_color_normalized, edgecolor='none', label='Individual Samples')  # Remove the border
+
+            # Pink section
+            ax[1][col].bar(bar_positions, pink_heights, bar_width, bottom=blue_heights,
+                           color='salmon', edgecolor='none', label='Block Samples')  # Remove the border
+
+            # Place the title below the bars
+            ax[1][col].text(0.5, -0.1, title,
+                            ha='center', va='center', transform=ax[1][col].transAxes)
+
+            # ax[1][col].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+            h, l = ax[1][col].get_legend_handles_labels()
+            ax[1][col].legend(h[:4], l[:4], bbox_to_anchor=(1.05, 1), loc=2)
 
         fig.tight_layout()  # Adjust plot layout to prevent overlapping
+
         plot_name = "Sim_MSE_" + str(self._num_regressors) + "regressors_" + str(self._num_levels) + "levels_" + str(
-            self._num_trials) + "trials.png"
+            self._num_trials) + "trials. MP="+str(self._mixing_percentage)+".png"
+
         plt.savefig(plot_name, dpi=300)
 
         plt.close()
