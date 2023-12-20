@@ -113,8 +113,7 @@ class Generator:
             b = 2**self._num_regressors
 
             if b - a + 1 < N_prime:
-                # raise ValueError(
-                # "Cannot generate {} unique integers in the specified range.".format(n))
+
                 unique_integers = np.array(random.sample(range(a, b), b-a))
             else:
                 unique_integers = np.array(

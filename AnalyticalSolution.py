@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.linear_model import LogisticRegression, Ridge, Lasso
+from sklearn.linear_model import LogisticRegression, Ridge, Lasso, LinearRegression
 from sklearn.model_selection import GridSearchCV
 from scipy.stats import bernoulli
 from scipy.special import expit
@@ -28,7 +28,7 @@ class AnalyticalSolution:
 
         return df_encoded
 
-    def __init__(self, x, sample_size_info, lamb=[0], nudge=10 ** (-5), y=np.array([0]), large_sample_rows=None):
+    def __init__(self, x, sample_size_info, lamb=0, nudge=10 ** (-5), y=np.array([0]), large_sample_rows=None):
         """
         @param x: Your data matrix with each regressor having at least 1 of all of its levels in its collumn. Do not
                     pass in a 1-hot encoded matrix - that will be done within the class.
@@ -41,7 +41,6 @@ class AnalyticalSolution:
         self._x = x
         self._y = y
         self._lambda = lamb
-        self._penalty = None
         self._x_tilde = None
         self._invert_this = None
         self._z = None
@@ -62,8 +61,8 @@ class AnalyticalSolution:
         self.count_levels()
         end = timer()
 
-        print("count levels  time")
-        print(end - start)
+        # print("count levels  time")
+        # print(end - start)
 
         # if X is not encoded with dummy varibles, we do so here
         self._encoded_x = self.encode_df()
@@ -119,7 +118,7 @@ class AnalyticalSolution:
 
         prod = (xt.T).dot(xt)
 
-        print(prod)
+        # print(prod)
 
     def transform_response(self):
 
@@ -167,9 +166,12 @@ class AnalyticalSolution:
         success_frequencies = np.where(
             count_per_row > 0, success_counts / count_per_row, 0)
 
-        # To remove rows where freq == 0 or freq == 1
+        
+        drop_under_count = 3
+
+        # To remove rows where freq == 0 or freq == 1 or the count is <= drop_under_count
         to_delete = np.where((success_frequencies == 0) | (
-            success_frequencies == 1) | (count_per_row <= 0))[0]
+            success_frequencies == 1) | (count_per_row <= drop_under_count))[0]
 
         nums_to_delete = unq[to_delete]
 
@@ -184,13 +186,19 @@ class AnalyticalSolution:
 
         success_frequencies = np.delete(
             np.array(success_frequencies), to_delete, axis=0)
+        print(f"Min suc freq: {min(success_frequencies)}")
+        print(f"Max suc freq: {max(success_frequencies)}")
 
         unq = np.delete(unq, to_delete, axis=0)
 
         cnt = np.delete(cnt, to_delete, axis=0)
+
+        print(f"min count: {min(cnt)}")
+        print(f"average count: {np.array(cnt).mean()}")
         self._row_counts = cnt
 
-        W = np.diag(cnt * success_frequencies*(1-success_frequencies))
+        sample_weights = cnt * success_frequencies*(1-success_frequencies)
+        W = np.diag(sample_weights)
 
         z = np.log((success_frequencies) / (1-success_frequencies))
 
@@ -202,15 +210,33 @@ class AnalyticalSolution:
         unq = np.hstack((ones_column, unq))
 
         start_time = timer()
-        Xw = unq.T @ W
-        g = inv(Xw@unq) @ Xw @ z
-        self._gamma = g
+
+        # Xw = unq.T @ W
+
+        # g = inv(Xw@unq) @ Xw @ z
+
+        print(f"min weight: {min(sample_weights)}")
+        print(f"max weight: {max(sample_weights)}")
+
+        from sklearn.linear_model import Ridge
+        if self._lambda != 0:
+            linear_model = Ridge(alpha=self._lambda).fit(
+                unq, z, sample_weight=sample_weights)
+        else:
+            linear_model = LinearRegression().fit(unq, z, sample_weight=sample_weights)
+
+        g_new = np.array([linear_model.intercept_] +
+                         list(linear_model.coef_)[1:])
+
+        # print(f"Determinant: {np.linalg.det(Xw@unq)}")
+
+        self._gamma = g_new
         end_time = timer()
 
         fit_time = end_time - start_time
-        print()
-        print(f"fit time: {fit_time}")
-        print(f"transform time: {transform_time}")
+        # print()
+        # print(f"fit time: {fit_time}")
+        # print(f"transform time: {transform_time}")
 
         return fit_time, transform_time
 

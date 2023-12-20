@@ -529,6 +529,8 @@ class ExperimentSimulations:
         analytical_times = analytical_transform_times + analytical_fit_times
         iterative_times = self._iterative_times
 
+        time_ratio = iterative_times / analytical_fit_times
+
         fig_time, ax_time = plt.subplots(figsize=(7, 5))
 
         # add the transform times to the fit times for the analytical box plot
@@ -538,10 +540,16 @@ class ExperimentSimulations:
         y_boxplot_iterative_time = np.array(
             iterative_times).T.flatten().tolist()
 
+        y_boxplot_time_ratio = np.array(
+            time_ratio).T.flatten().tolist()
+
         df_a_times_box = pd.DataFrame(
             {"x": np.array(x_boxplot), "y": np.array(y_boxplot_analytical_time)})
         df_i_times_box = pd.DataFrame(
             {"x": np.array(x_boxplot), "y": np.array(y_boxplot_iterative_time)})
+
+        df_time_ratio_box = pd.DataFrame(
+            {"x": np.array(x_boxplot), "y": np.array(y_boxplot_time_ratio)})
 
         sns.boxplot(x='x', y='y', ax=ax_time, data=df_a_times_box, width=.3, color=color1, saturation=.5,
                     boxprops=dict(alpha=.3),
@@ -553,10 +561,18 @@ class ExperimentSimulations:
                     whiskerprops=dict(color=color2), capprops=dict(color=color2), medianprops=dict(color=color2),
                     flierprops=dict(markerfacecolor=color2, markeredgecolor=color2))
 
+        sns.boxplot(x='x', y='y', ax=ax_time, data=df_time_ratio_box, width=.2, color="black", saturation=.5,
+                    boxprops=dict(alpha=.4),
+                    whiskerprops=dict(color="black"), capprops=dict(color="black"), medianprops=dict(color="black"),
+                    flierprops=dict(markerfacecolor="black", markeredgecolor="black"))
+
         sns.lineplot(x=x_ax_counts_strings, y=np.mean(analytical_times, axis=0), color=color1, label='Analytic',
                      linewidth=2,
                      ax=ax_time)
         sns.lineplot(x=x_ax_counts_strings, y=np.mean(iterative_times, axis=0), color=color2, label='Standard Iterative',
+                     linewidth=2, ax=ax_time)
+
+        sns.lineplot(x=x_ax_counts_strings, y=np.mean(time_ratio, axis=0), color="black", label='Time Ratio',
                      linewidth=2, ax=ax_time)
 
         stacked_times = {"x": x_ax_counts_strings, "transform times": np.mean(
