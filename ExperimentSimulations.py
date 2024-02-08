@@ -31,11 +31,12 @@ class ExperimentSimulations:
                  large_samples_size=30,
                  num_obs=10**3,
                  nudge=10 ** (-5),
-                 beta_range=[-5, 10],
+                 beta_range=[-10, 10],
                  lamb=0,
                  penalty="l2",
                  logspace=True,
-                 use_mean=True):
+                 use_mean=True,
+                 drop_under_count=[0]):
         """
         :param num_trials: the number of simulations to run - the final plots will show the averages over all trials.
         :param num_regressors: the number of regressors the generated design matrix will have
@@ -75,6 +76,7 @@ class ExperimentSimulations:
         self._color3 = "blue"
         self._x_boxplot = None
         self._x_ax_counts_strings = None
+        self._drop_under_count = drop_under_count
 
     def run_observation_sim(self):
         self.run_sim("observations")
@@ -144,12 +146,14 @@ class ExperimentSimulations:
                 while True:
                     try:
                         # run the simulation on the current inputs
+
                         sim1 = Simulation.Simulation(num_observations=num_obs, num_regressors=num_regressors,
                                                      num_levels=num_levels, nudge=self._nudge,
                                                      beta_range=self._beta_range,
                                                      lamb=self._lambda, penalty=self._penalty,
                                                      mixing_percentage=self._mixing_percentage,
-                                                     large_samples_size=self._large_samples_size)
+                                                     large_samples_size=self._large_samples_size,
+                                                     drop_under_count=self._drop_under_count)
 
                         analytical_model = sim1.get_analytical_model()
                         row_counts, remaining_num_batch_samples = analytical_model.get_mixing_info()
@@ -159,7 +163,12 @@ class ExperimentSimulations:
                             N / total_samples)
 
                         # get the true and estimated parameter values
-                        true, gamma, lib_lin_sol = sim1.get_parameters()
+                        true, gammas, lib_lin_sol = sim1.get_parameters()
+
+                        number_of_drop_row = len(self._drop_under_count)
+
+                        multi_true = np.array([true]*number_of_drop_row)
+                        # gamma = np.array(gamma)
 
                         # get the model fitting times
                         analytical_transform_time, analytical_fit_time, iterative_time = sim1.get_times()
@@ -170,8 +179,11 @@ class ExperimentSimulations:
 
                         # compute sample errors with mean or median
                         if USE_MEAN:
+
+                            # paused work here. Now trial_gamma_error contains a list of
+                            #  mse of gamma and true for each drop count
                             trial_gamma_error.append(
-                                ((true - gamma) ** 2).mean(axis=0))
+                                ((multi_true - gammas) ** 2).mean(axis=1))
                             trial_lib_lin_error.append(
                                 ((true - lib_lin_sol) ** 2).mean(axis=0))
                             if num_regressors == 1:
@@ -179,7 +191,7 @@ class ExperimentSimulations:
                                     ((true - simple_params) ** 2).mean(axis=0))
                         else:
                             trial_gamma_error.append(
-                                np.median((true - gamma) ** 2, axis=0))
+                                np.median((multi_true - gammas) ** 2, axis=1))
                             trial_lib_lin_error.append(
                                 np.median((true - lib_lin_sol) ** 2, axis=0))
                             if num_regressors == 1:
@@ -318,12 +330,10 @@ class ExperimentSimulations:
         # DO NOT DELETE  # DO NOT DELETE  # DO NOT DELETE  # DO NOT DELETE
 
         self._x_boxplot = x_boxplot
-        y_boxplot_gamma = gamma_errors.T.flatten().tolist()
+
+        # y_boxplot_gamma = np.array(gamma_errors.T.flatten().tolist())
         y_boxplot_lib_lin = lib_lin_errors.T.flatten().tolist()
         y_boxplot_simple = simple_errors.T.flatten().tolist()
-
-        df_gamma_box = pd.DataFrame(
-            {"x": np.array(x_boxplot), "y": np.array(y_boxplot_gamma)})
 
         # DO NOT DELETE  # DO NOT DELETE  # DO NOT DELETE  # DO NOT DELETE
 
@@ -348,27 +358,51 @@ class ExperimentSimulations:
                         whiskerprops=dict(color=color3), capprops=dict(color=color3), medianprops=dict(color=color3),
                         flierprops=dict(markerfacecolor=color3, markeredgecolor=color3))
 
-        sns.boxplot(x='x', y='y', ax=ax[0][0], data=df_gamma_box, width=.3, color=color1, saturation=.5,
-                    boxprops=dict(alpha=.3),
-                    whiskerprops=dict(color=color1), capprops=dict(color=color1), medianprops=dict(color=color1),
-                    flierprops=dict(markerfacecolor=color1, markeredgecolor=color1))
+        # for each drop row count we extract the correponding errors for the gama estimate
+        num_columns = len(self._drop_under_count)
 
+        import matplotlib.colors as mcolors
+        base_rgb = mcolors.to_rgb(color1)
+
+        # Create a linear gradient of shades
+        shades = [mcolors.rgb2hex(np.clip(
+            np.array(base_rgb) * (1 - i/num_columns), 0, 1)) for i in range(num_columns)]
+
+        for i in range(num_columns):
+            color1 = shades[i]
+            # extract the errors for the given value of drop count and then plot
+            y_boxplot_gamma = np.array(
+                gamma_errors[:, :, i].T.flatten().tolist())
+            df_gamma_box = pd.DataFrame(
+                {"x": np.array(x_boxplot), "y": np.array(y_boxplot_gamma)})
+
+            sns.boxplot(x='x', y='y', ax=ax[0][0], data=df_gamma_box, width=.3, color=color1, saturation=.5,
+                        boxprops=dict(alpha=.3),
+                        whiskerprops=dict(color=color1), capprops=dict(color=color1), medianprops=dict(color=color1),
+                        flierprops=dict(markerfacecolor=color1, markeredgecolor=color1))
+
+            # do the line plot for mean / median here since looping is needed
+            if USE_MEAN:
+                y_gam = np.mean(gamma_errors[:, :, i], axis=0)
+            else:
+                y_gam = np.median(gamma_errors[:, :, i], axis=0)
+
+            sns.lineplot(x=x_ax_counts_strings, y=y_gam, color=color1,
+                         label='Analytic: DC='+str(self._drop_under_count[i]), linewidth=2, ax=ax[0][0])
+
+        # plot the iterative solution errors
         sns.boxplot(x='x', y='y', ax=ax[0][0], data=df_lib_lin_box, width=.2, color=color2, saturation=.5,
                     boxprops=dict(alpha=.4),
                     whiskerprops=dict(color=color2), capprops=dict(color=color2), medianprops=dict(color=color2),
                     flierprops=dict(markerfacecolor=color2, markeredgecolor=color2))
 
         if USE_MEAN:
-            y_gam = np.mean(gamma_errors, axis=0)
             y_iter = np.mean(lib_lin_errors, axis=0)
             y_simple = np.mean(simple_errors, axis=0)
         else:
-            y_gam = np.median(gamma_errors, axis=0)
             y_iter = np.median(lib_lin_errors, axis=0)
             y_simple = np.median(simple_errors, axis=0)
 
-        sns.lineplot(x=x_ax_counts_strings, y=y_gam, color=color1,
-                     label='Analytic', linewidth=2, ax=ax[0][0])
         sns.lineplot(x=x_ax_counts_strings, y=y_iter, color=color2,
                      label='Standard Iterative', linewidth=2, ax=ax[0][0])
         if num_regressors == 1:
@@ -379,7 +413,8 @@ class ExperimentSimulations:
         ax[0][0].set_ylabel("Average MSE (Predicted Beta vs Actual Beta)")
 
         h, l = ax[0][0].get_legend_handles_labels()
-        ax[0][0].legend(h[:4], l[:4], bbox_to_anchor=(1.05, 1), loc=2)
+
+        ax[0][0].legend(h, l, bbox_to_anchor=(1.05, 1), loc=2)
 
         # difference in MSE plot
 

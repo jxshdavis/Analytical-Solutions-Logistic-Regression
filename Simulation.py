@@ -6,7 +6,6 @@ from scipy.special import expit
 import AnalyticalSolution
 import DataGenerator
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from timeit import default_timer as timer
 
 
@@ -16,7 +15,7 @@ class Simulation:
     estimates of the underlying model using the DataGenerator class and sklearn's Logsitc Regression model.
     """
 
-    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, lamb, penalty, mixing_percentage, large_samples_size, random_data=True):
+    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, lamb, penalty, mixing_percentage, large_samples_size, drop_under_count, random_data=True):
         self._iterative_time = None
         self._mixing_percentage = mixing_percentage
         self._large_samples_size = large_samples_size
@@ -29,6 +28,8 @@ class Simulation:
         self._num_levels = num_levels
         self._nudge = nudge
         self._beta_range = beta_range
+        self._drop_under_count = drop_under_count
+        self._iterative_design = None
         # get the generated data
 
         start = timer()
@@ -45,10 +46,14 @@ class Simulation:
         if num_regressors == 1:
             self._simple_params = self.gen_simple_parameters()
 
+    def get_iterative_design(self):
+        return self._iterative_design
+
     def generate_data(self):
         generator = DataGenerator.Generator(self._num_observations, self._num_regressors, self._num_levels,
                                             self._nudge, self._beta_range, mixing_percentage=self._mixing_percentage,
-                                            large_samples_size=self._large_samples_size)
+                                            large_samples_size=self._large_samples_size,
+                                            drop_under_count=self._drop_under_count)
         sim_data_1 = generator.get_design_matrix()
         sim_y_1 = generator.get_response()
 
@@ -88,6 +93,7 @@ class Simulation:
         df_encoded_1 = df_encoded.astype(int)
 
         iterative_model.fit(df_encoded_1, self._sim_y.ravel())
+        self._iterative_design = df_encoded_1
         end_time = timer()
 
         # set the time the model took to run
@@ -99,10 +105,11 @@ class Simulation:
     def get_parameters(self):
         true = self._generator.get_params()
 
-        gamma = self._analytical_model.get_gamma().tolist()
+        gamma = self._analytical_model.get_gamma()
 
         lib_lin_sol = list(self._iterative_model.intercept_) + \
             list(self._iterative_model.coef_[0])
+
         lib_lin_sol = [x for x in lib_lin_sol]
 
         return np.array(true), np.array(gamma), np.array(lib_lin_sol)

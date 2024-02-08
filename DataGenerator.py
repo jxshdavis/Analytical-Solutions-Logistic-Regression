@@ -15,7 +15,7 @@ class Generator:
     generator.
     """
 
-    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, mixing_percentage=0, large_samples_size=30):
+    def __init__(self, num_observations, num_regressors, num_levels, nudge, beta_range, drop_under_count, mixing_percentage=0, large_samples_size=30, ):
         """
         :param num_observations:
         :param num_regressors:
@@ -35,6 +35,7 @@ class Generator:
         self._individual_integers = []
         self._individual_samples = 0
         self._batch_samples = 0
+        self._drop_under_count = drop_under_count
 
         start = timer()
         self._design_matrix = self.gen_design_matrix()
@@ -162,7 +163,7 @@ class Generator:
     def transform_design(self):
 
         model = AnalyticalSolution.AnalyticalSolution(
-            self.get_design_matrix(), self.get_sample_size_info(), nudge=self._nudge)
+            self.get_design_matrix(), self.get_sample_size_info(), nudge=self._nudge, drop_under_count=self._drop_under_count)
 
         # save the analytical model so we do not have to re-encode x in the future!
         self._analytical_model = model
