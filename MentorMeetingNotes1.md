@@ -25,7 +25,12 @@ Our main goal is to encoperat LeCams one-step update procedure to our current an
 
 ## Main ToDos
 
-1. 
+1. Read one-step background questions.
+2. Write down the equation for the update applied to our estimator.
+3. Implement the one step update.
+4. Make sure the user has the option to Remove rows below count k and delete homogenous rows.
+5. Update Simulations.
+6. Decide out what journal I want to submit to.
 
 
 
