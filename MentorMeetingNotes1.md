@@ -1,5 +1,5 @@
 # Mentor Meeting Notes 09.11.2024
-Student: Josh Davis
+Student: Josh Davis\\
 Mentor: Meng Li
 
 ## Meeting Outline
