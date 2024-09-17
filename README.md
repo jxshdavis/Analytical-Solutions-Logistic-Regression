@@ -25,9 +25,10 @@ Next Check In: How much progress do I want to encoreprare for my pleminary draft
 
 Capstone
 - some techinal results
+- submissions include cover sheet (like a guide to what is new from the capstone -> techincal progress and writing progress)
 
 ToDo:
 
-1. Joint meeting with McGuffey and Li about our end goals.
+1. Joint meeting with McGuffey and Li about our end goals (schedule with Dr. Li)
 2. 
 
