@@ -22,6 +22,7 @@ Our main goal is to encoperat LeCams one-step update procedure to our current an
 3. Comparing updated model accurary and confidence intervals to current estimator and MLE.
 4. Applying the theoretical results of LeCams method to our scenario.
 
+
 ## Main ToDos
 
 1. 
