@@ -1,12 +1,31 @@
 # Mentor Meeting Notes 09.11.2024
 
+## Meeting Outline
+
+Our meeting consited of a discussion of our existing project, restating of our main goals, and laying out actionable steps.
+
 ## Project Refresher
 
-Our meeting began with a quick refreshing of our existing project and restating of our main goals. Our research currently has
+Our research currently has
 - a closed form estimator for the logistic regression problem on binary data
-- mathematical analysis of asymptotic properties
-- simulation and comparison with the Maximum Likelihood Estimator
-- Comparison on a real breast cancer dataset
+- a mathematical analysis of asymptotic properties
+- a simulation and comparison with the Maximum Likelihood Estimator
+- a comparison on a real breast cancer dataset
+
+## Updated Project Goals
+
+We discussed scenarios where our current model struggles. Currently, these are when data points have a homogeneous response (all zeros or all ones) and low or zero row counts. We hope make progress on these issues durring the capstone.
+
+Our main goal is to encoperat LeCams one-step update procedure to our current analytic estimator. With this, we hope to upgrade to a model which can always use all avaiable data (unlike our current model). This will involve:
+1. Gaining a solid understanding of the one-step update and how to apply it to our model 
+2. Implemeting the one-step update in Python and running simulations.
+3. Comparing updated model accurary and confidence intervals to current estimator and MLE.
+4. Applying the theoretical results of LeCams method to our scenario.
+
+## Main ToDos
+
+1. 
+
 
 
 
