@@ -39,6 +39,8 @@ ToDo:
 ### Updates
 1. Read through LeCam Made Simple paper and took light notes on first section. I don't understand most of it right now.
 2. Wrote down the one step update on paper. I still don't fully understand the assumptions needed to use it but I'm just treating it as a Newton's method step right now.
+3. Got basic one step upworking working in code with synthetic examples.
+4. Fixed issues causing MLE to not compute simulation (skip over cases where data is degenerate)
 
 
 
