@@ -52,6 +52,8 @@ What we envision for the paper at a high level
 
 One-step
 1. Adjust the tone - what is the primary approach we want to advocate. In some scenarios we reccomend the one-step and in others we reccomend the gamma.
+2. Try unbalanced design matrix for comparing the two approaches.
+
 
 
 
