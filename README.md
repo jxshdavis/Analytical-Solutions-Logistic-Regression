@@ -11,6 +11,7 @@ TODO:
 5. Make sure the user has the option to Remove rows below count k and delete homogenous rows.
 6. Update Simulations.
 7. Fix the hard coded "alternate" method where we either drop homogeneous rows or estimate them with $1-\frac{1}{2N_m}$ or $\frac{1}{2N_m}$.
+8. Change the .transform_response() function to a .fit() named function.
 
 ## 09.17.2020 with McGuffey
 
