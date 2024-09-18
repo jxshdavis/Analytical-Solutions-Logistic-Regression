@@ -43,4 +43,16 @@ ToDo:
 4. Fixed issues causing MLE to not compute simulation (skip over cases where data is degenerate)
 
 
+## 09.18.2020
+Meeting Notes:
+
+What we envision for the paper at a high level
+1. Presentation can be more of an academic presentation
+2. Apply for the distinction thing when it comes out.
+
+One-step
+1. Adjust the tone - what is the primary approach we want to advocate. In some scenarios we reccomend the one-step and in others we reccomend the gamma.
+
+
+
 
