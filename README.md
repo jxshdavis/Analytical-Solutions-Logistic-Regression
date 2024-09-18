@@ -10,6 +10,7 @@ TODO:
 4. Implement the one step update.
 5. Make sure the user has the option to Remove rows below count k and delete homogenous rows.
 6. Update Simulations.
+7. Fix the hard coded "alternate" method where we either drop homogeneous rows or estimate them with $1-\frac{1}{2N_m}$ or $\frac{1}{2N_m}$.
 
 ## 09.17.2020 with McGuffey
 
@@ -30,5 +31,13 @@ Capstone
 ToDo:
 
 1. Joint meeting with McGuffey and Li about our end goals (schedule with Dr. Li)
-2. 
+
+
+## 09.18.2020 
+
+### Updates
+1. Read through LeCam Made Simple paper and took light notes on first section. I don't understand most of it right now.
+2. Wrote down the one step update on paper. I still don't fully understand the assumptions needed to use it but I'm just treating it as a Newton's method step right now.
+
+
 
