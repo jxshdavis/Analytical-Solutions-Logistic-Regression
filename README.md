@@ -54,6 +54,19 @@ One-step
 1. Adjust the tone - what is the primary approach we want to advocate. In some scenarios we reccomend the one-step and in others we reccomend the gamma.
 2. Try unbalanced design matrix for comparing the two approaches.
 
+### TODO:
+
+1. Find a fixed data set to illustrate the behavior observed in first test of all three methods were analytic estimators had better MSE to true beta.
+2. Fix the hard coded "alternate" method where we either drop homogeneous rows or estimate them with $1-\frac{1}{2N_m}$ or $\frac{1}{2N_m}$.
+3. Change the .transform_response() function to a .fit() named function.
+4. Run experiments on an unbalaced design matrix (missing rows / low row counts for some rows).
+
+
+### Udates:
+1. Figured out Journal and began formatting abstract and intro.
+2. Expanded the introduction for draft.
+
+
 
 
 
