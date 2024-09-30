@@ -60,6 +60,7 @@ One-step
 2. Fix the hard coded "alternate" method where we either drop homogeneous rows or estimate them with $1-\frac{1}{2N_m}$ or $\frac{1}{2N_m}$.
 3. Change the .transform_response() function to a .fit() named function.
 4. Run experiments on an unbalaced design matrix (missing rows / low row counts for some rows).
+5. Update real data experiments.
 
 
 ### Udates:
