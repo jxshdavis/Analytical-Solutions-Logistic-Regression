@@ -69,8 +69,9 @@ One-step
 1. Figured out Journal and began formatting abstract and intro.
 2. Expanded the introduction for draft.
 
+## 10.01.2024 McGuffey
 
-
+1. Spread out histogram plot.
 
 
 
