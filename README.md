@@ -62,8 +62,8 @@ One-step
 4. Change the .transform_response() function to a .fit() named function.
 5. Run experiments on an unbalaced design matrix (missing rows / low row counts for some rows).
 6. Update real data experiments.
+7. Spread out histograms in simulation plot.
    
-
 
 ### Udates:
 1. Figured out Journal and began formatting abstract and intro.
@@ -71,7 +71,13 @@ One-step
 
 ## 10.01.2024 McGuffey
 
-1. Spread out histogram plot.
 
 
+### Udates:
+
+1. Found the data set which illustrates the ability of analytic estimators.
+2. Spread out histograms in simulation plot.
+3. Fixed the hard coded "alternate" method... now a model parameter
+
+   
 
