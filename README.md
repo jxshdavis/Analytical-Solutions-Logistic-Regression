@@ -87,5 +87,6 @@ One-step
 1. Run special example where pseudo-inverse has to be used.
 2. Add new tests to the document to show Dr. Li in next meetin / email update.
 3. Run real data experiments with new table thing.
+4. Update manuscript with new cases found with pseudo inverse.
    
 
