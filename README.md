@@ -1,7 +1,7 @@
 # Analytic Logistic Regression
 
 
-## 09.11.2020
+## 09.11.2024
 
 TODO:
 1. Figure out what journal I want to submit to.
@@ -13,7 +13,7 @@ TODO:
 7. Fix the hard coded "alternate" method where we either drop homogeneous rows or estimate them with $1-\frac{1}{2N_m}$ or $\frac{1}{2N_m}$.
 8. Change the .transform_response() function to a .fit() named function.
 
-## 09.17.2020 with McGuffey
+## 09.17.2024 with McGuffey
 
 - Next time chunk is to make as much technical progress as possible
 - TA workshops
@@ -34,7 +34,7 @@ ToDo:
 1. Joint meeting with McGuffey and Li about our end goals (schedule with Dr. Li)
 
 
-## 09.18.2020 
+## 09.18.2024
 
 ### Updates
 1. Read through LeCam Made Simple paper and took light notes on first section. I don't understand most of it right now.
@@ -43,7 +43,7 @@ ToDo:
 4. Fixed issues causing MLE to not compute simulation (skip over cases where data is degenerate)
 
 
-## 09.18.2020
+## 09.18.2024
 Meeting Notes:
 
 What we envision for the paper at a high level
@@ -64,20 +64,28 @@ One-step
 6. Update real data experiments.
 7. Spread out histograms in simulation plot.
    
+   
 
 ### Udates:
+1.
+
+
+### Udates:
+
 1. Figured out Journal and began formatting abstract and intro.
 2. Expanded the introduction for draft.
+3. Found the data set which illustrates the ability of analytic estimators.
+4. Spread out histograms in simulation plot.
+5. Fixed the hard coded "alternate" method... now a model parameter
+6. Found new case where pseudo inverse has to be used.
+7. Moved all text to Biometrika format and did big set of revisions.
 
-## 10.01.2024 McGuffey
+   
+#10.05.2025
 
-
-
-### Udates:
-
-1. Found the data set which illustrates the ability of analytic estimators.
-2. Spread out histograms in simulation plot.
-3. Fixed the hard coded "alternate" method... now a model parameter
-
+###TODO:
+1. Run special example where pseudo-inverse has to be used.
+2. Add new tests to the document to show Dr. Li in next meetin / email update.
+3. Run real data experiments with new table thing.
    
 
