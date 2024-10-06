@@ -79,7 +79,8 @@ One-step
 5. Fixed the hard coded "alternate" method... now a model parameter
 6. Found new case where pseudo inverse has to be used.
 7. Moved all text to Biometrika format and did big set of revisions.
-8. Generalize Lemma 1 to only cover the case where $M \geq p+1$. 
+8. Added a new section 2.2 containing a new theorem MLE equivalence. This generalizes the example in 2.1 nicely.
+
 
 
    
@@ -90,5 +91,6 @@ One-step
 2. Add new tests to the document to show Dr. Li in next meetin / email update.
 3. Run real data experiments with new table thing.
 4. Update manuscript with new cases found with pseudo inverse.
+5. Generalize Lemma 1 to only cover the case where $M \geq p+1$.
    
 
