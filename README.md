@@ -79,6 +79,8 @@ One-step
 5. Fixed the hard coded "alternate" method... now a model parameter
 6. Found new case where pseudo inverse has to be used.
 7. Moved all text to Biometrika format and did big set of revisions.
+8. Generalize Lemma 1 to only cover the case where $M \geq p+1$. 
+
 
    
 #10.05.2025
