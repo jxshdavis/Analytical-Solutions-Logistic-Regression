@@ -74,12 +74,13 @@ One-step
 
 1. Figured out Journal and began formatting abstract and intro.
 2. Expanded the introduction for draft.
-3. Found the data set which illustrates the ability of analytic estimators.
+3. Found the data set which illustrates improved performance of analytic estimators.
 4. Spread out histograms in simulation plot.
 5. Fixed the hard coded "alternate" method... now a model parameter
 6. Found new case where pseudo inverse has to be used.
 7. Moved all text to Biometrika format and did big set of revisions.
 8. Added a new section 2.2 containing a new theorem MLE equivalence. This generalizes the example in 2.1 nicely.
+9. Have three examples of single data sets and then the application to the breast cancer dataset.
 
 
 
