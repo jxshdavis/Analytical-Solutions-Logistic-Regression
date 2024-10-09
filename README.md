@@ -85,13 +85,21 @@ One-step
 
 
    
-#10.05.2025
+#10.05.2024
 
 ###TODO:
 1. Run special example where pseudo-inverse has to be used.
-2. Add new tests to the document to show Dr. Li in next meetin / email update.
+2. Add new tests to the document to show Dr. Li in next meeting / email update.
 3. Run real data experiments with new table thing.
 4. Update manuscript with new cases found with pseudo inverse.
 5. Generalize Lemma 1 to only cover the case where $M \geq p+1$.
-   
 
+
+   
+## 10.09.2024
+
+
+Pre Meeting Plan
+1. Four analytic estimators and plots.
+2. Defining a new analytic estimator when $\tilde X$ does not exist or when $\tilde X^T \tilde X$ is not invertible.
+3. New work on when Gamma is the MLE.
