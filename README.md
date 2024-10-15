@@ -103,3 +103,10 @@ Pre Meeting Plan
 1. Four analytic estimators and plots.
 2. Defining a new analytic estimator when $\tilde X$ does not exist or when $\tilde X^T \tilde X$ is not invertible.
 3. New work on when Gamma is the MLE.
+
+Meeting Notes
+1. Since last meeting, I formally descirbed four variations of the analytic estimator. I described the 4 variations to Dr. Li and he asked clarifying questions.
+2. Discussed looking at other logistic regression papers to see how other people set up experiments.
+3. Run Experiemnts with more "tame" $$\beta$$s say in the interval $[-1,1]$.
+4. For experiments that use a test train split, do 50/50 and 80/20.
+5. Look into the amazon dataset.
