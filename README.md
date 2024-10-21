@@ -110,3 +110,12 @@ Meeting Notes
 3. Run Experiemnts with more "tame" $\beta$s say in the interval $[-1,1]$.
 4. For experiments that use a test train split, do 50/50 and 80/20.
 5. Look into the amazon dataset.
+
+## 10.16.24
+
+TODO:
+1. Reduce dimension fo breast cancer data set and re-run experiments.
+2. Look up Epithial cell size variable and see if it is mentioned in bio literature.
+3. Try to find a transformation similar to the t-test for gamma.
+
+
