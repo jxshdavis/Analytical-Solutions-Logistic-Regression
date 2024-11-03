@@ -92,7 +92,7 @@ One-step
 2. Add new tests to the document to show Dr. Li in next meeting / email update.
 3. Run real data experiments with new table thing.
 4. Update manuscript with new cases found with pseudo inverse.
-5. Generalize Lemma 1 to only cover the case where $M \geq p+1$.
+5. Generalize Lemma 1 to only cover the case where $M \geq p+1$ (I later realized this was not possible ie there are examples when M=p+1 but the matrix is not injective.
 
 
    
