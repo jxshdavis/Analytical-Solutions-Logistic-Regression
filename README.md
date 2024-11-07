@@ -131,6 +131,7 @@ UPDATES:
   - find more paper(s) on this topic
 2. Brush up algorithm 6.
 3. Get a time comparison where both methods can work directly with tilde X.
+4. Change MC Plots back to over lapping bars (different opacity and thickness)
 
 
 
