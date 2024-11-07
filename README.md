@@ -118,4 +118,19 @@ TODO:
 2. Look up Epithial cell size variable and see if it is mentioned in bio literature.
 3. Try to find a transformation similar to the t-test for gamma.
 
+UPDATES:
+
+1. Applied random forest to reduce amazon dataset to 5 predictors.
+2. Found one paper on Epithial cells.
+3. Did a lot of work for the closed form distribution but it didn't go anywhere useful.
+   
+## 11.06.24
+
+1. Breast cancer Epithial cell size
+  - establish if the paper I found can really be used as a comparison
+  - find more paper(s) on this topic
+2. Brush up algorithm 6.
+3. Get a time comparison where both methods can work directly with tilde X.
+
+
 
