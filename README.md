@@ -126,6 +126,7 @@ UPDATES:
    
 ## 11.06.24
 
+TODOs:
 1. Breast cancer Epithial cell size
   - establish if the paper I found can really be used as a comparison
   - find more paper(s) on this topic
@@ -133,7 +134,9 @@ UPDATES:
 3. Get a time comparison where both methods can work directly with tilde X.
 4. Change MC Plots back to over lapping bars (different opacity and thickness)
 
-
+UPDATES:
+1. Implemented things so that both models work with tilde X (using the stats models api instead of SKLEARN for the MLE estimation)!
+2. 
 
 
 
