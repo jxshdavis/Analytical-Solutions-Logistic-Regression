@@ -137,7 +137,18 @@ TODOs:
 UPDATES:
 1. Implemented things so that both models work with tilde X (using the stats models api instead of SKLEARN for the MLE estimation)!
   - Note that it seems like SKlearn and statsmodels api handle low sample datasets differently, but on larger sample ones give the same results.
-3. 
+
+## 11.25.24 (fill in notes)
+
+TODOs:
+
+
+UPDATES:
+
+## Draft Todos
+- read through draft and make list of TODOs
+
+
 
 
 
