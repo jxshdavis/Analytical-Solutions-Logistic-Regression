@@ -149,8 +149,7 @@ UPDATES:
 - parse through MCMC code and make sure there are no mistakes
 - update plots
 - update conclusion with information regarding specific varibale
-- read through draft and make list of TODOs
-- 
+- update plots and figs with the /ref thing
 
 
 
