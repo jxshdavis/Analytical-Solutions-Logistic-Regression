@@ -150,6 +150,7 @@ UPDATES:
 - update plots
 - update conclusion with information regarding specific varibale
 - update plots and figs with the /ref thing
+- fix notation for diagonal matricies
 
 
 
