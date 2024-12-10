@@ -153,6 +153,16 @@ UPDATES:
 - fix notation for diagonal matricies
 
 
+## 12.10.24 (fill in notes)
+
+ToDos:
+1. Transition paper to use a binomial framework (remove tilde variables)
+2. Generallize Asymptotic distrbution section to assume X is injective only.
+3. Do edits annotated durring meeting.
+
+Updates:
+1.
+
 
 
 
