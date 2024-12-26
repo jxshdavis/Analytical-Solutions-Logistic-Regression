@@ -161,7 +161,14 @@ ToDos:
 3. Do edits annotated durring meeting.
 
 Updates:
-1.
+1. Removed tilde X from the paper (overall execept for a section on transforming bernouli data to binomial)
+2. Did 2
+3. Did 3
+
+## 12.26.24 ( fill in from notebook)
+
+ToDos:
+1. Generalize theoretical results to allow low (bounded) row counts.
 
 
 
