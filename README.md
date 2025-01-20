@@ -169,6 +169,14 @@ Updates:
 
 ToDos:
 1. Generalize theoretical results to allow low (bounded) row counts.
+2. MC experiment / sim to evaluate coverage of our prediction intervals for variable values so far!
+  - Generate a Sample
+  - fit a model
+      - generate N new datasets from the fitted model
+      - for each one, fit a model and save coefficient values
+- make quantile intervals based on the fitted values over N datasets
+- repeat and count percentage of intervals which contain the true coefficient values
+
 
 
 
