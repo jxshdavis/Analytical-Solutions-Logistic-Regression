@@ -177,7 +177,10 @@ ToDos:
 - make quantile intervals based on the fitted values over N datasets
 - repeat and count percentage of intervals which contain the true coefficient values
 
+## 03.28.25 ( updates)
 
+ToDos:
+1. In R, I realized that the sometime the data given to the MLE had perfect seperation and therefore the MLE didnt even exist. In these cases, I just dont compute the MLE but still compute the analytic estimator.
 
 
 
